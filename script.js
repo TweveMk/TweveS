@@ -89,7 +89,7 @@ const channels = [
   {
     name: "AZAM TWO",
     src: "https://1030517708.rsc.cdn77.org/1030517708/index.mpd",
-    key: "ee8085ef939b4434aa6c5f0d7e7b8863:c48a7a886dfdcbbc7d9bf71d13bb976e",
+    key: "ee8085ef939b4434aa6c5f0d7e7b886HEC3:c48a7a886dfdcbbc7d9bf71d13bb976e",
     drm: "clearkey",
     category: "Entertainment"
   },
@@ -482,15 +482,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           ${m.tags && m.tags.length ? m.tags.map(t => `<span class='badge'>${t}</span>`).join('') : ""}
           <h3 class="mt-2 font-semibold text-sm">${m.name}</h3>
           <div class="mt-3 flex gap-2">
-            <button class="flex-1 text-center bg-green-500 text-white font-semibold py-2 rounded-xl hover:bg-green-400 transition">
+            <a href="${m.src}" target="_blank" rel="noopener" class="flex-1 text-center bg-green-500 text-white font-semibold py-2 rounded-xl hover:bg-green-400 transition">
               ▶️ Play Now
-            </button>
+            </a>
           </div>
         </div>
       `;
-      card.querySelector('button').addEventListener('click', () => {
-        loadMedia(m);
-      });
       row.appendChild(card);
     });
   }
