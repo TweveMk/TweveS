@@ -89,7 +89,7 @@ const channels = [
   {
     name: "AZAM TWO",
     src: "https://1030517708.rsc.cdn77.org/1030517708/index.mpd",
-    key: "ee8085ef939b4434aa6c5f0d7e7b8863:c48a7a886dfdcbbc7d9bf71d13bb976e",
+    key: "ee8085ef939b4434aa6c5f0d7e7b886HEC3:c48a7a886dfdcbbc7d9bf71d13bb976e",
     drm: "clearkey",
     category: "Entertainment"
   },
@@ -345,8 +345,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const liveSearch = document.getElementById('liveSearch');
   const noResults = document.getElementById('noResults');
   let currentQuery = "";
-  let shakaPlayer = null;
-  let exoPlayer = null;
 
   // Check Picture-in-Picture support
   if (!document.pictureInPictureEnabled) {
@@ -366,7 +364,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Initialize Shaka Player for channels
+  // Initialize Shaka Player
   shaka.polyfill.installAll();
   if (!shaka.Player.isBrowserSupported()) {
     console.error('Browser not supported by Shaka Player.');
@@ -374,35 +372,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  async function initShakaPlayer() {
-    if (shakaPlayer) {
-      await shakaPlayer.destroy();
-    }
-    shakaPlayer = new shaka.Player(videoElement);
-    const shakaUi = new shaka.ui.Overlay(shakaPlayer, videoContainer, videoElement);
-    shakaUi.configure({
-      overflowMenuButtons: ['quality', 'language', 'captions', 'playback_rate', 'cast']
-    });
-  }
+  const player = new shaka.Player(videoElement);
+  const ui = new shaka.ui.Overlay(player, videoContainer, videoElement);
+  ui.configure({
+    overflowMenuButtons: ['quality', 'language', 'captions', 'playback_rate', 'cast']
+  });
 
-  function initExoPlayer() {
-    if (exoPlayer) {
-      exoPlayer.destroy();
-    }
-    exoPlayer = new exo.Player(videoElement);
-    exoPlayer.addEventListener('error', (error) => {
-      console.error('ExoPlayer error:', error);
-      alert(`Error loading movie: ${error.message}`);
-    });
-    videoElement.controls = true; // Enable native controls for ExoPlayer
-  }
-
-  async function loadChannel(media) {
+  async function loadMedia(media) {
     videoContainer.classList.remove('hidden');
     videoContainer.classList.add('active');
 
     try {
-      await initShakaPlayer();
+      await player.attach(videoElement);
       const clearKeys = {};
       if (media.key) {
         if (media.key.includes(',')) {
@@ -416,40 +397,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      shakaPlayer.configure({
+      player.configure({
         drm: {
           clearKeys: clearKeys
         }
       });
 
-      await shakaPlayer.load(media.src);
-      videoElement.play().catch(error => console.warn("Autoplay failed (channel): User interaction needed", error));
+      // For HLS (.m3u8), Shaka handles it automatically
+      await player.load(media.src);
+      videoElement.play().catch(error => console.warn("Autoplay failed: User interaction needed", error));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-      console.error("Error loading channel:", error);
+      console.error("Error loading video:", error);
       alert(`Error loading media: ${media.name}`);
-    }
-  }
-
-  function loadMovie(media) {
-    videoContainer.classList.remove('hidden');
-    videoContainer.classList.add('active');
-
-    try {
-      initExoPlayer();
-      exoPlayer.source = {
-        sources: [
-          {
-            src: media.src,
-            type: 'application/x-mpegURL' // HLS format for .m3u8
-          }
-        ]
-      };
-      videoElement.play().catch(error => console.warn("Autoplay failed (movie): User interaction needed", error));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (error) {
-      console.error("Error loading movie:", error);
-      alert(`Error loading movie: ${media.name}`);
     }
   }
 
@@ -482,7 +442,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       div.addEventListener('click', () => {
         document.querySelectorAll('#channelListLive .channel').forEach(c => c.classList.remove('active'));
         div.classList.add('active');
-        loadChannel(ch);
+        loadMedia(ch);
       });
       channelListElement.appendChild(div);
     });
@@ -522,15 +482,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           ${m.tags && m.tags.length ? m.tags.map(t => `<span class='badge'>${t}</span>`).join('') : ""}
           <h3 class="mt-2 font-semibold text-sm">${m.name}</h3>
           <div class="mt-3 flex gap-2">
-            <button class="flex-1 text-center bg-green-500 text-white font-semibold py-2 rounded-xl hover:bg-green-400 transition">
+            <a href="${m.src}" target="_blank" rel="noopener" class="flex-1 text-center bg-green-500 text-white font-semibold py-2 rounded-xl hover:bg-green-400 transition">
               ▶️ Play Now
-            </button>
+            </a>
           </div>
         </div>
       `;
-      card.querySelector('button').addEventListener('click', () => {
-        loadMovie(m);
-      });
       row.appendChild(card);
     });
   }
@@ -541,10 +498,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const moviesPage = document.getElementById("moviesPage");
     const playerBox = document.getElementById("videoContainer");
 
-    // Hide all pages and player
+    // Hide all pages
     live.classList.add("hidden");
     moviesPage.classList.add("hidden");
-    playerBox.classList.add("hidden");
 
     // Unset nav state
     btnLive.classList.remove("active");
@@ -553,9 +509,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Show selected page and set active button
     if (page === "live") {
       live.classList.remove("hidden");
+      playerBox.classList.add("hidden"); // Hidden until a channel is chosen
       btnLive.classList.add("active");
     } else if (page === "movies") {
       moviesPage.classList.remove("hidden");
+      playerBox.classList.add("hidden");
       btnMovies.classList.add("active");
     }
   }
