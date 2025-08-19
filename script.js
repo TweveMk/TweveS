@@ -123,7 +123,7 @@ const channels = [
   },
   {
     name: "ZBC 2",
-    src "https://1833615464.rsc.cdn77.org/1833615464/index.mpd",
+    src: "https://1833615464.rsc.cdn77.org/1833615464/index.mpd",
     key: "50d91516e3814946b2c00200ad0ab0bc:ba3175efd331adc59a11baa21a8ad9e6",
     drm: "clearkey",
     category: "Entertainment"
@@ -165,7 +165,7 @@ const channels = [
   },
   {
     name: "STARZ PLAY ACTION",
-    src: "https://neacdnpop3-edge02.aws.playco.com/live/eds/StarzPlay_Action/DASH/StarzPlay_Action.mpd",
+    src: "https://neacdnpop3-edge02.shahid.net/live/eds/StarzPlay_Action/DASH/StarzPlay_Action.mpd",
     key: "295981eefbf1bf38fe361ee6c969dacf:c16c1c18d96a2932e6fff8f685cbf8d8",
     drm: "clearkey",
     category: "Movies"
@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             clearKeys[keyId] = key;
           });
         } else {
-          const [keyId, key] = media.key.split(':');
+          const [keyId, key] = keyPair.split(':');
           clearKeys[keyId] = key;
         }
       }
