@@ -165,7 +165,7 @@ const channels = [
   },
   {
     name: "STARZ PLAY ACTION",
-    src: "https://neacdnpop3-edge02.shahid.net/live/eds/StarzPlay_Action/DASH/StarzPlay_Action.mpd",
+    src: "https://neacdnpop3-edge02.aws.playco.com/live/eds/StarzPlay_Action/DASH/StarzPlay_Action.mpd",
     key: "295981eefbf1bf38fe361ee6c969dacf:c16c1c18d96a2932e6fff8f685cbf8d8",
     drm: "clearkey",
     category: "Movies"
@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             clearKeys[keyId] = key;
           });
         } else {
-          const [keyId, key] = keyPair.split(':');
+          const [keyId, key] = media.key.split(':');
           clearKeys[keyId] = key;
         }
       }
