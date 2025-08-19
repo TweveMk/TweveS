@@ -270,7 +270,7 @@ const channels = [
   }
 ];
 
-// Download-only movies (merged with former online movies)
+// Download-only movies
 const downloadMovies = [
   {
     name: "Ghost",
@@ -283,41 +283,45 @@ const downloadMovies = [
     icon: "https://i.ibb.co/0pbndhSQ/x.jpg",
     download: "https://drive.google.com/file/d/1qPAeFr1gVVPeKvxf7WN13vmTVez4tzt7/view?usp=drive_link",
     tags: ["HD", "Thriller"]
-  },
+  }
+];
+
+// Online movies
+const onlineMovies = [
   {
     name: "Deep cover",
     icon: "https://i.ibb.co/TMdkCYhb/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/6ae044c0-692f-40bd-95c5-0c99ab30f27a/playlist.m3u8",
+    src: "https://vz-1bb50f2e-8ea.b-cdn.net/6ae044c0-692f-40bd-95c5-0c99ab30f27a/playlist.m3u8",
     tags: ["HD", "Action"]
   },
   {
     name: "SuperMan (Imetafsiriwa)",
     icon: "https://i.ibb.co/zhZY2mC0/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/90a38928-5c11-4526-ba09-02a02b5dbc85/playlist.m3u8",
+    src: "https://vz-1bb50f2e-8ea.b-cdn.net/90a38928-5c11-4526-ba09-02a02b5dbc85/playlist.m3u8",
     tags: ["HD", "Action"]
   },
   {
     name: "Off the Grind",
     icon: "https://i.ibb.co/KpYny5HT/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/bb20ea3c-7f75-499c-9e92-eb0ac3ae1a2d/playlist.m3u8",
+    src: "https://vz-1bb50f2e-8ea.b-cdn.net/bb20ea3c-7f75-499c-9e92-eb0ac3ae1a2d/playlist.m3u8",
     tags: ["HD", "Drama"]
   },
   {
     name: "THUNDERBOLTS",
     icon: "https://i.ibb.co/mCYRvz1Q/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/6f50dd95-476a-489a-9e85-3347c57e5586/playlist.m3u8",
+    src: "https://vz-1bb50f2e-8ea.b-cdn.net/6f50dd95-476a-489a-9e85-3347c57e5586/playlist.m3u8",
     tags: ["HD", "Action"]
   },
   {
     name: "Heard of State",
     icon: "https://i.ibb.co/xKY7mg0m/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/6f50dd95-476a-489a-9e85-3347c57e5586/playlist.m3u8",
+    src: "https://vz-1bb50f2e-8ea.b-cdn.net/6f50dd95-476a-489a-9e85-3347c57e5586/playlist.m3u8",
     tags: ["HD", "Drama"]
   },
   {
     name: "SHADOW FORCE",
     icon: "https://i.ibb.co/ZpJtxPVm/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/bde45d25-32bb-44cc-b00b-945ea7423c7d/playlist.m3u8",
+    src: "https://vz-1bb50f2e-8ea.b-cdn.net/bde45d25-32bb-44cc-b00b-945ea7423c7d/playlist.m3u8",
     tags: ["HD", "Action"]
   }
 ];
@@ -341,6 +345,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const liveSearch = document.getElementById('liveSearch');
   const noResults = document.getElementById('noResults');
   let currentQuery = "";
+  let shakaPlayer = null;
+  let exoPlayer = null;
 
   // Check Picture-in-Picture support
   if (!document.pictureInPictureEnabled) {
@@ -368,18 +374,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  const shakaPlayer = new shaka.Player(videoElement);
-  const shakaUi = new shaka.ui.Overlay(shakaPlayer, videoContainer, videoElement);
-  shakaUi.configure({
-    overflowMenuButtons: ['quality', 'language', 'captions', 'playback_rate', 'cast']
-  });
+  async function initShakaPlayer() {
+    if (shakaPlayer) {
+      await shakaPlayer.destroy();
+    }
+    shakaPlayer = new shaka.Player(videoElement);
+    const shakaUi = new shaka.ui.Overlay(shakaPlayer, videoContainer, videoElement);
+    shakaUi.configure({
+      overflowMenuButtons: ['quality', 'language', 'captions', 'playback_rate', 'cast']
+    });
+  }
+
+  function initExoPlayer() {
+    if (exoPlayer) {
+      exoPlayer.destroy();
+    }
+    exoPlayer = new exo.Player(videoElement);
+    exoPlayer.addEventListener('error', (error) => {
+      console.error('ExoPlayer error:', error);
+      alert(`Error loading movie: ${error.message}`);
+    });
+    videoElement.controls = true; // Enable native controls for ExoPlayer
+  }
 
   async function loadChannel(media) {
     videoContainer.classList.remove('hidden');
     videoContainer.classList.add('active');
 
     try {
-      await shakaPlayer.attach(videoElement);
+      await initShakaPlayer();
       const clearKeys = {};
       if (media.key) {
         if (media.key.includes(',')) {
@@ -405,6 +428,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       console.error("Error loading channel:", error);
       alert(`Error loading media: ${media.name}`);
+    }
+  }
+
+  function loadMovie(media) {
+    videoContainer.classList.remove('hidden');
+    videoContainer.classList.add('active');
+
+    try {
+      initExoPlayer();
+      exoPlayer.source = {
+        sources: [
+          {
+            src: media.src,
+            type: 'application/x-mpegURL' // HLS format for .m3u8
+          }
+        ]
+      };
+      videoElement.play().catch(error => console.warn("Autoplay failed (movie): User interaction needed", error));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      console.error("Error loading movie:", error);
+      alert(`Error loading movie: ${media.name}`);
     }
   }
 
@@ -455,12 +500,37 @@ document.addEventListener('DOMContentLoaded', async () => {
           ${m.tags && m.tags.length ? m.tags.map(t => `<span class='badge'>${t}</span>`).join('') : ""}
           <h3 class="mt-2 font-semibold text-sm">${m.name}</h3>
           <div class="mt-3 flex gap-2">
-            <a href="${m.download}" target="_blank" rel="noopener" class="flex-1 text-center bg-cyan-400 text-black font-semibold py-2 rounded-xl hover:bg-cyan-300 transition">
+            <a href="${m.download}" target="_blank" rel="noopener" class="flex-1 text-center bg-cyan-400 text-black font-semibold py-2 rounded-xl hover:bg-cyan-300 transition" download>
               ⬇️ Download
             </a>
           </div>
         </div>
       `;
+      row.appendChild(card);
+    });
+  }
+
+  function populateOnlineMovies() {
+    const row = document.getElementById("onlineMoviesRow");
+    row.innerHTML = "";
+    onlineMovies.forEach(m => {
+      const card = document.createElement("div");
+      card.className = "movie-card";
+      card.innerHTML = `
+        <img src="${m.icon}" alt="${m.name} poster">
+        <div class="movie-info">
+          ${m.tags && m.tags.length ? m.tags.map(t => `<span class='badge'>${t}</span>`).join('') : ""}
+          <h3 class="mt-2 font-semibold text-sm">${m.name}</h3>
+          <div class="mt-3 flex gap-2">
+            <button class="flex-1 text-center bg-green-500 text-white font-semibold py-2 rounded-xl hover:bg-green-400 transition">
+              ▶️ Play Now
+            </button>
+          </div>
+        </div>
+      `;
+      card.querySelector('button').addEventListener('click', () => {
+        loadMovie(m);
+      });
       row.appendChild(card);
     });
   }
@@ -505,5 +575,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize
   populateLiveChannels();
   populateDownloadMovies();
+  populateOnlineMovies();
   showPage('live'); // Set Live TV as default page
 });
