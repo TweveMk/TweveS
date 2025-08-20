@@ -14,7 +14,7 @@ const specialLogos = {
   "Azam One": "https://i.ibb.co/NdR0tdJz/x.jpg"
 };
 
-// Channel list (reduced to 5 channels as per your instructions)
+// Channel list (exactly 5 channels, unchanged from previous request)
 const channels = [
   {
     name: "AMC",
@@ -125,18 +125,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const noResults = document.getElementById('noResults');
   let currentQuery = "";
 
-  // Apply CSS to ensure video fits the screen in full screen mode
-  videoElement.style.objectFit = 'contain'; // Ensure video fits the screen while maintaining aspect ratio
+  // Apply CSS to ensure video fills the entire screen in full screen mode
+  videoElement.style.objectFit = 'contain'; // Default: show full video content
   videoElement.style.width = '100%';
   videoElement.style.height = '100%';
   // Add event listener to handle full screen changes
   document.addEventListener('fullscreenchange', () => {
     if (document.fullscreenElement) {
-      videoElement.style.objectFit = 'contain'; // Fit the entire screen in full screen
-      videoElement.style.width = '100vw'; // Use viewport width
-      videoElement.style.height = '100vh'; // Use viewport height
+      videoElement.style.objectFit = 'cover'; // Fill the entire screen, cropping if necessary
+      videoElement.style.width = '100vw'; // Full viewport width
+      videoElement.style.height = '100vh'; // Full viewport height
     } else {
-      videoElement.style.objectFit = 'contain'; // Maintain consistent behavior when exiting full screen
+      videoElement.style.objectFit = 'contain'; // Revert to showing full content
       videoElement.style.width = '100%';
       videoElement.style.height = '100%';
     }
