@@ -124,25 +124,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentQuery = "";
   let currentChannel = null;
 
-  // Apply CSS to ensure video fills the entire screen in full screen mode
-  video.style.objectFit = 'contain'; // Default: show full video content
-  video.style.width = '100%';
-  video.style.height = '100%';
+  // Remove all sizing customization to use native video size
+  video.style.width = ''; // No forced width
+  video.style.height = ''; // No forced height
+  video.style.objectFit = ''; // No object-fit to preserve native size
   video.style.position = 'absolute';
-  video.style.top = '0';
-  video.style.left = '0';
-  videoContainer.style.position = 'relative'; // Ensure container supports absolute positioning
+  video.style.top = '50%';
+  video.style.left = '50%';
+  video.style.transform = 'translate(-50%, -50%)'; // Center the video
+  videoContainer.style.position = 'relative';
   videoContainer.style.width = '100%';
   videoContainer.style.height = '100%';
-  // Add event listener to handle full screen changes
+  // Handle full screen changes to maintain native size
   document.addEventListener('fullscreenchange', () => {
     if (document.fullscreenElement) {
-      video.style.objectFit = 'cover'; // Fill entire screen, cropping if necessary
-      video.style.width = '100vw';
-      video.style.height = '100vh';
+      video.style.width = ''; // Use native width
+      video.style.height = ''; // Use native height
+      video.style.objectFit = ''; // No scaling
       video.style.position = 'fixed';
-      video.style.top = '0';
-      video.style.left = '0';
+      video.style.top = '50%';
+      video.style.left = '50%';
+      video.style.transform = 'translate(-50%, -50%)';
       video.style.zIndex = '9999';
       videoContainer.style.width = '100vw';
       videoContainer.style.height = '100vh';
@@ -150,40 +152,55 @@ document.addEventListener('DOMContentLoaded', async () => {
       videoContainer.style.top = '0';
       videoContainer.style.left = '0';
       videoContainer.style.zIndex = '9998';
-      // Override Shaka Player UI styles to minimize black bars
+      videoContainer.style.background = '#000'; // Black background for empty space
+      // Adjust Shaka Player UI to avoid interference
       const shakaControls = document.querySelector('.shaka-video-container');
       if (shakaControls) {
         shakaControls.style.width = '100vw';
         shakaControls.style.height = '100vh';
         shakaControls.style.padding = '0';
         shakaControls.style.margin = '0';
+        shakaControls.style.display = 'flex';
+        shakaControls.style.justifyContent = 'center';
+        shakaControls.style.alignItems = 'center';
       }
       const shakaControlBar = document.querySelector('.shaka-controls-container');
       if (shakaControlBar) {
-        shakaControlBar.style.bottom = '0'; // Ensure controls are at the bottom edge
+        shakaControlBar.style.position = 'absolute';
+        shakaControlBar.style.bottom = '0';
+        shakaControlBar.style.width = '100%';
         shakaControlBar.style.padding = '0';
       }
     } else {
-      video.style.objectFit = 'contain';
-      video.style.width = '100%';
-      video.style.height = '100%';
+      video.style.width = '';
+      video.style.height = '';
+      video.style.objectFit = '';
       video.style.position = 'absolute';
+      video.style.top = '50%';
+      video.style.left = '50%';
+      video.style.transform = 'translate(-50%, -50%)';
       video.style.zIndex = 'auto';
       videoContainer.style.width = '100%';
       videoContainer.style.height = '100%';
       videoContainer.style.position = 'relative';
       videoContainer.style.zIndex = 'auto';
+      videoContainer.style.background = '';
       // Reset Shaka Player UI styles
       const shakaControls = document.querySelector('.shaka-video-container');
       if (shakaControls) {
-        shakaControls.style.width = '100%';
-        shakaControls.style.height = '100%';
+        shakaControls.style.width = '';
+        shakaControls.style.height = '';
         shakaControls.style.padding = '';
         shakaControls.style.margin = '';
+        shakaControls.style.display = '';
+        shakaControls.style.justifyContent = '';
+        shakaControls.style.alignItems = '';
       }
       const shakaControlBar = document.querySelector('.shaka-controls-container');
       if (shakaControlBar) {
+        shakaControlBar.style.position = '';
         shakaControlBar.style.bottom = '';
+        shakaControlBar.style.width = '';
         shakaControlBar.style.padding = '';
       }
     }
