@@ -121,103 +121,44 @@ async function init() {
   const btnMovies = document.getElementById('btnMovies');
   const liveSearch = document.getElementById('liveSearch');
   const noResults = document.getElementById('noResults');
-  const liveChannels = document.getElementById('liveChannels');
-  const downloadMovies = document.getElementById('downloadMovies');
   let currentQuery = "";
   let currentChannel = null;
-  let zoomLevel = 1.0; // Default zoom level
-  let initialPinchDistance = null;
 
-  // Validate critical DOM elements
-  if (!video || !videoContainer || !channelListElement || !btnLive || !btnMovies || !liveSearch || !noResults || !liveChannels || !downloadMovies) {
-    console.error('One or more DOM elements are missing. Defaulting to Live section.', {
-      video, videoContainer, channelListElement, btnLive, btnMovies, liveSearch, noResults, liveChannels, downloadMovies
-    });
-    // Fallback: Initialize Live section
-    if (liveChannels && channelListElement && noResults) {
-      liveChannels.classList.remove('hidden');
-      downloadMovies?.classList.add('hidden');
-      videoContainer?.classList.remove('hidden');
-      btnLive?.classList.add('bg-blue-600', 'text-white');
-      btnMovies?.classList.remove('bg-blue-600', 'text-white');
-      btnMovies?.classList.add('bg-gray-600');
-      populateLiveChannels();
-    }
-    return;
-  }
+  // Variables for pinch-to-zoom and panning
+  let scale = 1.0;
+  let translateX = 0;
+  let translateY = 0;
+  let lastScale = 1.0;
+  let lastX = 0;
+  let lastY = 0;
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
 
-  // Set video container to fixed position
-  videoContainer.style.position = 'fixed';
-  videoContainer.style.top = '0';
-  videoContainer.style.left = '0';
-  videoContainer.style.width = '100%';
-  videoContainer.style.height = '50%'; // Adjustable
-  videoContainer.style.zIndex = '1000';
-  videoContainer.style.background = '#000';
-  video.style.width = '';
-  video.style.height = '';
-  video.style.objectFit = '';
+  // Remove default sizing and prepare for dynamic scaling
+  video.style.width = '100%'; // Initial size to fit container
+  video.style.height = '100%';
+  video.style.objectFit = 'contain'; // Preserve aspect ratio
   video.style.position = 'absolute';
   video.style.top = '50%';
   video.style.left = '50%';
   video.style.transform = 'translate(-50%, -50%)';
   video.style.transformOrigin = 'center center';
-
-  // Add padding to body to prevent content overlap
-  document.body.style.paddingTop = '50%';
-
-  // Pinch-to-zoom functionality
-  function handleTouchStart(event) {
-    if (event.touches.length === 2) {
-      event.preventDefault();
-      const touch1 = event.touches[0];
-      const touch2 = event.touches[1];
-      initialPinchDistance = Math.hypot(
-        touch1.clientX - touch2.clientX,
-        touch1.clientY - touch2.clientY
-      );
-    }
-  }
-
-  function handleTouchMove(event) {
-    if (event.touches.length === 2 && initialPinchDistance !== null) {
-      event.preventDefault();
-      const touch1 = event.touches[0];
-      const touch2 = event.touches[1];
-      const currentPinchDistance = Math.hypot(
-        touch1.clientX - touch2.clientX,
-        touch1.clientY - touch2.clientY
-      );
-      const scaleChange = currentPinchDistance / initialPinchDistance;
-      let newZoomLevel = zoomLevel * scaleChange;
-      newZoomLevel = Math.max(0.5, Math.min(3, newZoomLevel));
-      zoomLevel = newZoomLevel;
-      video.style.transform = `translate(-50%, -50%) scale(${zoomLevel})`;
-      initialPinchDistance = currentPinchDistance;
-    }
-  }
-
-  function handleTouchEnd(event) {
-    if (event.touches.length < 2) {
-      initialPinchDistance = null;
-    }
-  }
-
-  videoContainer.addEventListener('touchstart', handleTouchStart);
-  videoContainer.addEventListener('touchmove', handleTouchMove);
-  videoContainer.addEventListener('touchend', handleTouchEnd);
+  videoContainer.style.position = 'relative';
+  videoContainer.style.width = '100%';
+  videoContainer.style.height = '100%';
+  videoContainer.style.overflow = 'hidden'; // Clip overflow when zoomed
 
   // Handle full screen changes
   document.addEventListener('fullscreenchange', () => {
     if (document.fullscreenElement) {
-      zoomLevel = 1.0;
-      video.style.width = '';
-      video.style.height = '';
-      video.style.objectFit = '';
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.objectFit = 'contain';
       video.style.position = 'fixed';
       video.style.top = '50%';
       video.style.left = '50%';
-      video.style.transform = 'translate(-50%, -50%)';
+      video.style.transform = `translate(-50%, -50%) scale(${scale}) translate(${translateX}px, ${translateY}px)`;
       video.style.zIndex = '9999';
       videoContainer.style.width = '100vw';
       videoContainer.style.height = '100vh';
@@ -226,7 +167,7 @@ async function init() {
       videoContainer.style.left = '0';
       videoContainer.style.zIndex = '9998';
       videoContainer.style.background = '#000';
-      document.body.style.paddingTop = '0';
+      // Adjust Shaka Player UI
       const shakaControls = document.querySelector('.shaka-video-container');
       if (shakaControls) {
         shakaControls.style.width = '100vw';
@@ -245,23 +186,20 @@ async function init() {
         shakaControlBar.style.padding = '0';
       }
     } else {
-      zoomLevel = 1.0;
-      video.style.width = '';
-      video.style.height = '';
-      video.style.objectFit = '';
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.objectFit = 'contain';
       video.style.position = 'absolute';
       video.style.top = '50%';
       video.style.left = '50%';
-      video.style.transform = 'translate(-50%, -50%)';
+      video.style.transform = `translate(-50%, -50%) scale(${scale}) translate(${translateX}px, ${translateY}px)`;
       video.style.zIndex = 'auto';
       videoContainer.style.width = '100%';
-      videoContainer.style.height = '50%';
-      videoContainer.style.position = 'fixed';
-      videoContainer.style.top = '0';
-      videoContainer.style.left = '0';
-      videoContainer.style.zIndex = '1000';
-      videoContainer.style.background = '#000';
-      document.body.style.paddingTop = '50%';
+      videoContainer.style.height = '100%';
+      videoContainer.style.position = 'relative';
+      videoContainer.style.zIndex = 'auto';
+      videoContainer.style.background = '';
+      // Reset Shaka Player UI styles
       const shakaControls = document.querySelector('.shaka-video-container');
       if (shakaControls) {
         shakaControls.style.width = '';
@@ -282,36 +220,100 @@ async function init() {
     }
   });
 
+  // Pinch-to-zoom and panning
+  let touchPoints = [];
+  video.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    touchPoints = Array.from(e.touches);
+    if (touchPoints.length === 2) {
+      // Prepare for pinch-to-zoom
+      isDragging = false;
+    } else if (touchPoints.length === 1) {
+      // Prepare for panning
+      isDragging = true;
+      startX = touchPoints[0].clientX - translateX;
+      startY = touchPoints[0].clientY - translateY;
+    }
+  });
+
+  video.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    touchPoints = Array.from(e.touches);
+
+    if (touchPoints.length === 2) {
+      // Pinch-to-zoom
+      isDragging = false;
+      const touch1 = touchPoints[0];
+      const touch2 = touchPoints[1];
+      const dx = touch1.clientX - touch2.clientX;
+      const dy = touch1.clientY - touch2.clientY;
+      const currentDistance = Math.sqrt(dx * dx + dy * dy);
+      const midX = (touch1.clientX + touch2.clientX) / 2;
+      const midY = (touch1.clientY + touch2.clientY) / 2;
+
+      if (e.scale !== undefined) {
+        // Use native scale if available
+        scale = lastScale * e.scale;
+      } else {
+        // Calculate scale based on touch distance
+        if (!video.dataset.lastDistance) {
+          video.dataset.lastDistance = currentDistance;
+        }
+        const lastDistance = parseFloat(video.dataset.lastDistance);
+        scale = lastScale * (currentDistance / lastDistance);
+      }
+
+      // Limit scale (e.g., 0.5x to 3x)
+      scale = Math.min(Math.max(0.5, scale), 3.0);
+
+      // Update transform
+      video.style.transform = `translate(-50%, -50%) scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+      video.dataset.lastDistance = currentDistance;
+    } else if (touchPoints.length === 1 && isDragging) {
+      // Panning
+      translateX = touchPoints[0].clientX - startX;
+      translateY = touchPoints[0].clientY - startY;
+      // Limit panning to prevent moving too far
+      const maxTranslate = 100 * scale; // Adjust based on scale
+      translateX = Math.min(Math.max(-maxTranslate, translateX), maxTranslate);
+      translateY = Math.min(Math.max(-maxTranslate, translateY), maxTranslate);
+      video.style.transform = `translate(-50%, -50%) scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+    }
+  });
+
+  video.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    touchPoints = Array.from(e.touches);
+    if (touchPoints.length < 2) {
+      lastScale = scale;
+      video.dataset.lastDistance = '';
+      isDragging = false;
+    }
+  });
+
   // Check Picture-in-Picture support
-  if (pipButton && !document.pictureInPictureEnabled) {
+  if (!document.pictureInPictureEnabled) {
     pipButton.style.display = 'none';
   }
 
   // Picture-in-Picture toggle
-  if (pipButton) {
-    pipButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (document.pictureInPictureElement) {
-        document.exitPictureInPicture().catch(error => {
-          console.error('Error exiting PiP mode:', error);
-        });
-        zoomLevel = 1.0;
-        video.style.transform = 'translate(-50%, -50%)';
-      } else {
-        zoomLevel = 1.0;
-        video.style.transform = 'translate(-50%, -50%)';
-        video.requestPictureInPicture().catch(error => {
-          console.error('Error entering PiP mode:', error);
-        });
-      }
-    });
-  }
+  pipButton.addEventListener('click', () => {
+    if (document.pictureInPictureElement) {
+      document.exitPictureInPicture().catch(error => {
+        console.error('Error exiting PiP mode: ', error);
+      });
+    } else {
+      video.requestPictureInPicture().catch(error => {
+        console.error('Error entering PiP mode: ', error);
+      });
+    }
+  });
 
   // Initialize Shaka Player
   shaka.polyfill.installAll();
   if (!shaka.Player.isBrowserSupported()) {
     console.error('Browser not supported by Shaka Player.');
+    alert('Your browser does not support Shaka Player.');
     return;
   }
 
@@ -333,6 +335,7 @@ async function init() {
       await player.attach(video);
       let clearKeys = {};
 
+      // Handle different key formats
       if (channel.keyId && channel.key) {
         clearKeys[channel.keyId] = channel.key;
       } else if (channel.key && channel.key.includes(':')) {
@@ -372,10 +375,10 @@ async function init() {
       console.log("Retrying channel:", currentChannel.name);
       let clearKeys = {};
 
-      if (currentChannel.keyId && currentChannel.key) {
+      if (currentChannel.keyId && channel.key) {
         clearKeys[currentChannel.keyId] = currentChannel.key;
       } else if (currentChannel.key && currentChannel.key.includes(':')) {
-        const [keyId, key] = channel.key.split(':');
+        const [keyId, key] = currentChannel.key.split(':');
         clearKeys[keyId] = key;
       } else if (currentChannel.key && currentChannel.key.includes(',')) {
         currentChannel.key.split(',').forEach(pair => {
@@ -424,6 +427,7 @@ async function init() {
 
     if (filtered.length === 0) {
       noResults.classList.remove('hidden');
+      return;
     } else {
       noResults.classList.add('hidden');
     }
@@ -436,13 +440,9 @@ async function init() {
         <p class="text-sm font-semibold truncate">${ch.name}</p>
         <p class="text-[10px] text-slate-300 mt-1">${ch.category || 'Live'}</p>
       `;
-      div.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+      div.addEventListener('click', () => {
         document.querySelectorAll('#channelListLive .channel').forEach(c => c.classList.remove('active'));
         div.classList.add('active');
-        zoomLevel = 1.0;
-        video.style.transform = 'translate(-50%, -50%)';
         loadChannel(ch);
       });
       channelListElement.appendChild(div);
@@ -450,7 +450,8 @@ async function init() {
   }
 
   function populateDownloadMovies() {
-    downloadMovies.innerHTML = "";
+    const row = document.getElementById("downloadMovies");
+    row.innerHTML = "";
     downloadMovies.forEach((movie) => {
       const div = document.createElement('div');
       div.className = 'movie bg-gray-700 rounded-xl p-3 cursor-pointer text-center shadow-md hover:shadow-xl transition';
@@ -461,46 +462,29 @@ async function init() {
         <button class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Download</button>
       `;
       div.querySelector('button').addEventListener('click', (e) => {
-        e.preventDefault();
         e.stopPropagation();
         window.open(movie.download, '_blank');
       });
-      downloadMovies.appendChild(div);
+      row.appendChild(div);
     });
   }
 
   // Navigation button handlers
-  btnLive.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Live TV button clicked');
+  btnLive.addEventListener('click', () => {
     btnLive.classList.add('bg-blue-600', 'text-white');
     btnMovies.classList.remove('bg-blue-600', 'text-white');
     btnMovies.classList.add('bg-gray-600');
-    liveChannels.classList.remove('hidden');
-    downloadMovies.classList.add('hidden');
-    videoContainer.classList.remove('hidden');
-    currentQuery = "";
-    liveSearch.value = "";
-    zoomLevel = 1.0;
-    video.style.transform = 'translate(-50%, -50%)';
-    populateLiveChannels();
+    document.getElementById('liveChannels').classList.remove('hidden');
+    document.getElementById('downloadMovies').classList.add('hidden');
+    populateLiveChannels(currentQuery);
   });
 
-  btnMovies.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Movies button clicked');
+  btnMovies.addEventListener('click', () => {
     btnMovies.classList.add('bg-blue-600', 'text-white');
     btnLive.classList.remove('bg-blue-600', 'text-white');
     btnLive.classList.add('bg-gray-600');
-    liveChannels.classList.add('hidden');
-    downloadMovies.classList.remove('hidden');
-    videoContainer.classList.add('hidden');
-    currentQuery = "";
-    liveSearch.value = "";
-    zoomLevel = 1.0;
-    video.style.transform = 'translate(-50%, -50%)';
+    document.getElementById('liveChannels').classList.add('hidden');
+    document.getElementById('downloadMovies').classList.remove('hidden');
     populateDownloadMovies();
   });
 
@@ -511,12 +495,6 @@ async function init() {
   });
 
   // Initialize with live channels
-  liveChannels.classList.remove('hidden');
-  downloadMovies.classList.add('hidden');
-  videoContainer.classList.remove('hidden');
-  btnLive.classList.add('bg-blue-600', 'text-white');
-  btnMovies.classList.remove('bg-blue-600', 'text-white');
-  btnMovies.classList.add('bg-gray-600');
   populateLiveChannels();
 }
 
