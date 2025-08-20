@@ -14,7 +14,7 @@ const specialLogos = {
   "Azam One": "https://i.ibb.co/NdR0tdJz/x.jpg"
 };
 
-// Channel list (exactly 5 channels, unchanged from previous request)
+// Channel list (exactly 5 channels, unchanged)
 const channels = [
   {
     name: "AMC",
@@ -129,16 +129,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   videoElement.style.objectFit = 'contain'; // Default: show full video content
   videoElement.style.width = '100%';
   videoElement.style.height = '100%';
+  videoElement.style.position = 'absolute'; // Ensure video is positioned to fill container
+  videoElement.style.top = '0';
+  videoElement.style.left = '0';
   // Add event listener to handle full screen changes
   document.addEventListener('fullscreenchange', () => {
     if (document.fullscreenElement) {
-      videoElement.style.objectFit = 'cover'; // Fill the entire screen, cropping if necessary
+      videoElement.style.objectFit = 'cover'; // Fill entire screen, cropping if necessary
       videoElement.style.width = '100vw'; // Full viewport width
       videoElement.style.height = '100vh'; // Full viewport height
+      videoElement.style.position = 'fixed'; // Use fixed positioning in full screen
+      videoElement.style.top = '0';
+      videoElement.style.left = '0';
+      videoElement.style.zIndex = '9999'; // Ensure video is on top
     } else {
       videoElement.style.objectFit = 'contain'; // Revert to showing full content
       videoElement.style.width = '100%';
       videoElement.style.height = '100%';
+      videoElement.style.position = 'absolute'; // Revert to container-relative positioning
+      videoElement.style.zIndex = 'auto'; // Reset z-index
     }
   });
 
