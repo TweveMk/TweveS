@@ -25,7 +25,7 @@ const channels = [
   },
   {
     name: "AZAM SPORTS 1",
-    srcArizona: "https://1375207669.rsc.cdn77.org/1375207669/index.mpd",
+    src: "https://1375207669.rsc.cdn77.org/1375207669/index.mpd",
     key: "675c9741780f4b75b74d4bf08536084b:5bec79012cd8e84f3cfe6bee4992b4b7",
     drm: "clearkey",
     category: "Sports"
@@ -53,58 +53,6 @@ const channels = [
   }
 ];
 
-// Download-only movies (unchanged)
-const downloadMovies = [
-  {
-    name: "Ghost",
-    icon: "https://i.ibb.co/CK8rY52s/x.jpg",
-    download: "https://drive.google.com/file/d/1OQ32dEF7eQnCtNVnx2M_V3iMqh6jH9p8/view?usp=drive_link",
-    tags: ["HD", "Action"]
-  },
-  {
-    name: "John Luther",
-    icon: "https://i.ibb.co/0pbndhSQ/x.jpg",
-    download: "https://drive.google.com/file/d/1qPAeFr1gVVPeKvxf7WN13vmTVez4tzt7/view?usp=drive_link",
-    tags: ["HD", "Thriller"]
-  },
-  {
-    name: "Deep cover",
-    icon: "https://i.ibb.co/TMdkCYhb/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/6ae044c0-692f-40bd-95c5-0c99ab30f27a/playlist.m3u8",
-    tags: ["HD", "Action"]
-  },
-  {
-    name: "SuperMan (Imetafsiriwa)",
-    icon: "https://i.ibb.co/zhZY2mC0/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/90a38928-5c11-4526-ba09-02a02b5dbc85/playlist.m3u8",
-    tags: ["HD", "Action"]
-  },
-  {
-    name: "Off the Grind",
-    icon: "https://i.ibb.co/KpYny5HT/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/bb20ea3c-7f75-499c-9e92-eb0ac3ae1a2d/playlist.m3u8",
-    tags: ["HD", "Drama"]
-  },
-  {
-    name: "THUNDERBOLTS",
-    icon: "https://i.ibb.co/mCYRvz1Q/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/6f50dd95-476a-489a-9e85-3347c57e5586/playlist.m3u8",
-    tags: ["HD", "Action"]
-  },
-  {
-    name: "Heard of State",
-    icon: "https://i.ibb.co/xKY7mg0m/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/6f50dd95-476a-489a-9e85-3347c57e5586/playlist.m3u8",
-    tags: ["HD", "Drama"]
-  },
-  {
-    name: "SHADOW FORCE",
-    icon: "https://i.ibb.co/ZpJtxPVm/x.jpg",
-    download: "https://vz-1bb50f2e-8ea.b-cdn.net/bde45d25-32 friendship-44cc-b00b-945ea7423c7d/playlist.m3u8",
-    tags: ["HD", "Action"]
-  }
-];
-
 // Add logos to channels
 const channelsWithLogos = channels.map(ch => ({
   ...ch,
@@ -118,7 +66,6 @@ async function init() {
   const videoContainer = document.getElementById('videoContainer');
   const channelListElement = document.getElementById('channelListLive');
   const btnLive = document.getElementById('btnLive');
-  const btnMovies = document.getElementById('btnMovies');
   const liveSearch = document.getElementById('liveSearch');
   const noResults = document.getElementById('noResults');
   let currentQuery = "";
@@ -343,7 +290,7 @@ async function init() {
       console.log("Retrying channel:", currentChannel.name);
       let clearKeys = {};
 
-      if (currentChannel.keyId && currentChannel.key) {
+      if (currentChannel.keyId && channel.key) {
         clearKeys[currentChannel.keyId] = currentChannel.key;
       } else if (currentChannel.key && currentChannel.key.includes(':')) {
         const [keyId, key] = currentChannel.key.split(':');
@@ -419,49 +366,11 @@ async function init() {
     });
   }
 
-  function populateDownloadMovies() {
-    const row = document.getElementById("downloadMovies");
-    row.innerHTML = "";
-    downloadMovies.forEach((movie) => {
-      const div = document.createElement('div');
-      div.className = 'movie bg-gray-700 rounded-xl p-3 cursor-pointer text-center shadow-md hover:shadow-xl transition';
-      div.innerHTML = `
-        <img src="${movie.icon}" alt="${movie.name}" class="mb-2 mx-auto border-2 border-white shadow">
-        <p class="text-sm font-semibold truncate">${movie.name}</p>
-        <p class="text-[10px] text-slate-300 mt-1">${movie.tags.join(', ')}</p>
-        <button class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Download</button>
-      `;
-      div.querySelector('button').addEventListener('click', (e) => {
-        e.stopPropagation();
-        window.open(movie.download, '_blank');
-      });
-      row.appendChild(div);
-    });
-  }
-
   // Navigation button handlers
   btnLive.addEventListener('click', () => {
     btnLive.classList.add('bg-blue-600', 'text-white');
-    btnMovies.classList.remove('bg-blue-600', 'text-white');
-    btnMovies.classList.add('bg-gray-600');
     document.getElementById('liveChannels').classList.remove('hidden');
-    document.getElementById('downloadMovies').classList.add('hidden');
     populateLiveChannels(currentQuery);
-  });
-
-  btnMovies.addEventListener('click', () => {
-    btnMovies.classList.add('bg-blue-600', 'text-white');
-    btnLive.classList.remove('bg-blue-600', 'text-white');
-    btnLive.classList.add('bg-gray-600');
-    const downloadMoviesContainer = document.getElementById('downloadMovies');
-    const liveChannelsContainer = document.getElementById('liveChannels');
-    if (downloadMoviesContainer && liveChannelsContainer) {
-      liveChannelsContainer.classList.add('hidden');
-      downloadMoviesContainer.classList.remove('hidden');
-      populateDownloadMovies(); // Ensure movies are populated
-    } else {
-      console.error('Error: downloadMovies or liveChannels element not found in DOM');
-    }
   });
 
   // Search handler
