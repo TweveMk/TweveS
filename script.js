@@ -53,7 +53,7 @@ const channels = [
   }
 ];
 
-// Download-only movies (unchanged as per your instructions)
+// Download-only movies (unchanged)
 const downloadMovies = [
   {
     name: "Ghost",
@@ -113,41 +113,40 @@ const channelsWithLogos = channels.map(ch => ({
 
 // Initialize everything after DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
-  const videoElement = document.getElementById('video');
+  const video = document.getElementById('video');
   const pipButton = document.getElementById('pipButton');
   const videoContainer = document.getElementById('videoContainer');
   const channelListElement = document.getElementById('channelListLive');
   const btnLive = document.getElementById('btnLive');
   const btnMovies = document.getElementById('btnMovies');
-
-  // Search elements
   const liveSearch = document.getElementById('liveSearch');
   const noResults = document.getElementById('noResults');
   let currentQuery = "";
+  let currentChannel = null;
 
   // Apply CSS to ensure video fills the entire screen in full screen mode
-  videoElement.style.objectFit = 'contain'; // Default: show full video content
-  videoElement.style.width = '100%';
-  videoElement.style.height = '100%';
-  videoElement.style.position = 'absolute'; // Ensure video is positioned to fill container
-  videoElement.style.top = '0';
-  videoElement.style.left = '0';
+  video.style.objectFit = 'contain'; // Default: show full video content
+  video.style.width = '100%';
+  video.style.height = '100%';
+  video.style.position = 'absolute'; // Ensure video is positioned to fill container
+  video.style.top = '0';
+  video.style.left = '0';
   // Add event listener to handle full screen changes
   document.addEventListener('fullscreenchange', () => {
     if (document.fullscreenElement) {
-      videoElement.style.objectFit = 'cover'; // Fill entire screen, cropping if necessary
-      videoElement.style.width = '100vw'; // Full viewport width
-      videoElement.style.height = '100vh'; // Full viewport height
-      videoElement.style.position = 'fixed'; // Use fixed positioning in full screen
-      videoElement.style.top = '0';
-      videoElement.style.left = '0';
-      videoElement.style.zIndex = '9999'; // Ensure video is on top
+      video.style.objectFit = 'cover'; // Fill entire screen, cropping if necessary
+      video.style.width = '100vw'; // Full viewport width
+      video.style.height = '100vh'; // Full viewport height
+      video.style.position = 'fixed'; // Use fixed positioning in full screen
+      video.style.top = '0';
+      video.style.left = '0';
+      video.style.zIndex = '9999'; // Ensure video is on top
     } else {
-      videoElement.style.objectFit = 'contain'; // Revert to showing full content
-      videoElement.style.width = '100%';
-      videoElement.style.height = '100%';
-      videoElement.style.position = 'absolute'; // Revert to container-relative positioning
-      videoElement.style.zIndex = 'auto'; // Reset z-index
+      video.style.objectFit = 'contain'; // Revert to showing full content
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.position = 'absolute'; // Revert to container-relative positioning
+      video.style.zIndex = 'auto'; // Reset z-index
     }
   });
 
@@ -163,13 +162,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error exiting PiP mode: ', error);
       });
     } else {
-      videoElement.requestPictureInPicture().catch(error => {
+      video.requestPictureInPicture().catch(error => {
         console.error('Error entering PiP mode: ', error);
       });
     }
   });
 
-  // Initialize Shaka Player for channels
+  // Initialize Shaka Player
   shaka.polyfill.installAll();
   if (!shaka.Player.isBrowserSupported()) {
     console.error('Browser not supported by Shaka Player.');
@@ -177,45 +176,102 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  const shakaPlayer = new shaka.Player(videoElement);
-  const shakaUi = new shaka.ui.Overlay(shakaPlayer, videoContainer, videoElement);
+  const player = new shaka.Player(video);
+  const shakaUi = new shaka.ui.Overlay(player, videoContainer, video);
   shakaUi.configure({
     overflowMenuButtons: ['quality', 'language', 'captions', 'playback_rate', 'cast']
   });
 
-  async function loadChannel(media) {
+  // Error handling for Shaka Player
+  player.addEventListener('error', onError);
+
+  async function loadChannel(channel) {
+    currentChannel = channel;
     videoContainer.classList.remove('hidden');
     videoContainer.classList.add('active');
 
     try {
-      await shakaPlayer.attach(videoElement);
-      const clearKeys = {};
-      if (media.key) {
-        if (media.key.includes(',')) {
-          media.key.split(',').forEach(keyPair => {
-            const [keyId, key] = keyPair.split(':');
+      await player.attach(video);
+      let clearKeys = {};
+
+      // Handle different key formats
+      if (channel.key) {
+        if (channel.key.includes(',')) {
+          channel.key.split(',').forEach(pair => {
+            const [keyId, key] = pair.split(':');
             clearKeys[keyId] = key;
           });
         } else {
-          const [keyId, key] = media.key.split(':');
+          const [keyId, key] = channel.key.split(':');
           clearKeys[keyId] = key;
         }
       }
 
-      shakaPlayer.configure({
-        drm: {
-          clearKeys: clearKeys
-        }
-      });
+      if (Object.keys(clearKeys).length > 0 && channel.drm === "clearkey") {
+        player.configure({ drm: { clearKeys } });
+      } else {
+        player.configure({ drm: {} });
+      }
 
-      await shakaPlayer.load(media.src);
-      videoElement.play().catch(error => console.warn("Autoplay failed (channel): User interaction needed", error));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (error) {
-      console.error("Error loading channel:", error);
-      alert(`Error loading media: ${media.name}`);
+      await player.load(channel.src);
+      video.muted = false;
+      await video.play().catch(err => console.warn("Autoplay blocked:", err));
+      console.log("Now playing:", channel.name);
+    } catch (err) {
+      console.error("Load error:", err);
+      retryLoad();
     }
   }
+
+  function onError(event) {
+    console.error("Shaka Error:", event.detail);
+    retryLoad();
+  }
+
+  async function retryLoad() {
+    if (!currentChannel) return;
+    try {
+      console.log("Retrying channel:", currentChannel.name);
+      let clearKeys = {};
+
+      if (currentChannel.key) {
+        if (currentChannel.key.includes(',')) {
+          currentChannel.key.split(',').forEach(pair => {
+            const [keyId, key] = pair.split(':');
+            clearKeys[keyId] = key;
+          });
+        } else {
+          const [keyId, key] = channel.key.split(':');
+          clearKeys[keyId] = key;
+        }
+      }
+
+      if (Object.keys(clearKeys).length > 0 && currentChannel.drm === "clearkey") {
+        player.configure({ drm: { clearKeys } });
+      } else {
+        player.configure({ drm: {} });
+      }
+
+      await player.load(currentChannel.src);
+      video.muted = false;
+      await video.play().catch(err => console.warn("Autoplay blocked:", err));
+    } catch (e) {
+      console.error("Retry failed:", e);
+      setTimeout(retryLoad, 10000);
+    }
+  }
+
+  function autoReload() {
+    setInterval(() => {
+      if (video.readyState < 2 || video.paused) {
+        console.warn("Stream stuck, reloading...");
+        retryLoad();
+      }
+    }, 5000);
+  }
+
+  // Start auto-reload
+  autoReload();
 
   // Renders channels based on a query
   function populateLiveChannels(query = "") {
