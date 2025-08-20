@@ -123,24 +123,75 @@ async function init() {
   const noResults = document.getElementById('noResults');
   let currentQuery = "";
   let currentChannel = null;
+  let zoomLevel = 1.0; // Default zoom level
+  let initialPinchDistance = null;
 
   // Remove all sizing customization to use native video size
-  video.style.width = ''; // No forced width
-  video.style.height = ''; // No forced height
-  video.style.objectFit = ''; // No object-fit to preserve native size
+  video.style.width = '';
+  video.style.height = '';
+  video.style.objectFit = '';
   video.style.position = 'absolute';
   video.style.top = '50%';
   video.style.left = '50%';
-  video.style.transform = 'translate(-50%, -50%)'; // Center the video
+  video.style.transform = 'translate(-50%, -50%)';
+  video.style.transformOrigin = 'center center'; // Ensure zoom is centered
   videoContainer.style.position = 'relative';
   videoContainer.style.width = '100%';
   videoContainer.style.height = '100%';
-  // Handle full screen changes to maintain native size
+
+  // Pinch-to-zoom functionality
+  function handleTouchStart(event) {
+    if (event.touches.length === 2) {
+      event.preventDefault(); // Prevent default browser zoom
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      initialPinchDistance = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+      );
+    }
+  }
+
+  function handleTouchMove(event) {
+    if (event.touches.length === 2 && initialPinchDistance !== null) {
+      event.preventDefault();
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      const currentPinchDistance = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+      );
+      const scaleChange = currentPinchDistance / initialPinchDistance;
+      let newZoomLevel = zoomLevel * scaleChange;
+
+      // Constrain zoom level between 0.5x and 3x
+      newZoomLevel = Math.max(0.5, Math.min(3, newZoomLevel));
+      zoomLevel = newZoomLevel;
+
+      // Apply zoom and keep centered
+      video.style.transform = `translate(-50%, -50%) scale(${zoomLevel})`;
+      initialPinchDistance = currentPinchDistance; // Update for continuous zooming
+    }
+  }
+
+  function handleTouchEnd(event) {
+    if (event.touches.length < 2) {
+      initialPinchDistance = null; // Reset pinch distance
+    }
+  }
+
+  // Add touch event listeners to video container
+  videoContainer.addEventListener('touchstart', handleTouchStart);
+  videoContainer.addEventListener('touchmove', handleTouchMove);
+  videoContainer.addEventListener('touchend', handleTouchEnd);
+
+  // Handle full screen changes to maintain native size and reset zoom
   document.addEventListener('fullscreenchange', () => {
     if (document.fullscreenElement) {
-      video.style.width = ''; // Use native width
-      video.style.height = ''; // Use native height
-      video.style.objectFit = ''; // No scaling
+      zoomLevel = 1.0; // Reset zoom in full-screen
+      video.style.width = '';
+      video.style.height = '';
+      video.style.objectFit = '';
       video.style.position = 'fixed';
       video.style.top = '50%';
       video.style.left = '50%';
@@ -152,8 +203,7 @@ async function init() {
       videoContainer.style.top = '0';
       videoContainer.style.left = '0';
       videoContainer.style.zIndex = '9998';
-      videoContainer.style.background = '#000'; // Black background for empty space
-      // Adjust Shaka Player UI to avoid interference
+      videoContainer.style.background = '#000';
       const shakaControls = document.querySelector('.shaka-video-container');
       if (shakaControls) {
         shakaControls.style.width = '100vw';
@@ -172,6 +222,7 @@ async function init() {
         shakaControlBar.style.padding = '0';
       }
     } else {
+      zoomLevel = 1.0; // Reset zoom when exiting full-screen
       video.style.width = '';
       video.style.height = '';
       video.style.objectFit = '';
@@ -185,7 +236,6 @@ async function init() {
       videoContainer.style.position = 'relative';
       videoContainer.style.zIndex = 'auto';
       videoContainer.style.background = '';
-      // Reset Shaka Player UI styles
       const shakaControls = document.querySelector('.shaka-video-container');
       if (shakaControls) {
         shakaControls.style.width = '';
@@ -217,7 +267,11 @@ async function init() {
       document.exitPictureInPicture().catch(error => {
         console.error('Error exiting PiP mode: ', error);
       });
+      zoomLevel = 1.0; // Reset zoom when exiting PiP
+      video.style.transform = 'translate(-50%, -50%)';
     } else {
+      zoomLevel = 1.0; // Reset zoom when entering PiP
+      video.style.transform = 'translate(-50%, -50%)';
       video.requestPictureInPicture().catch(error => {
         console.error('Error entering PiP mode: ', error);
       });
@@ -250,7 +304,6 @@ async function init() {
       await player.attach(video);
       let clearKeys = {};
 
-      // Handle different key formats
       if (channel.keyId && channel.key) {
         clearKeys[channel.keyId] = channel.key;
       } else if (channel.key && channel.key.includes(':')) {
@@ -358,6 +411,8 @@ async function init() {
       div.addEventListener('click', () => {
         document.querySelectorAll('#channelListLive .channel').forEach(c => c.classList.remove('active'));
         div.classList.add('active');
+        zoomLevel = 1.0; // Reset zoom when switching channels
+        video.style.transform = 'translate(-50%, -50%)';
         loadChannel(ch);
       });
       channelListElement.appendChild(div);
