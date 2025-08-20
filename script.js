@@ -126,6 +126,13 @@ async function init() {
   let zoomLevel = 1.0; // Default zoom level
   let initialPinchDistance = null;
 
+  // Validate DOM elements
+  if (!btnLive || !btnMovies || !channelListElement || !videoContainer || !liveSearch || !noResults) {
+    console.error('One or more DOM elements are missing. Check HTML IDs.');
+    alert('Error: Required elements not found. Please check the HTML.');
+    return;
+  }
+
   // Remove all sizing customization to use native video size
   video.style.width = '';
   video.style.height = '';
@@ -134,7 +141,7 @@ async function init() {
   video.style.top = '50%';
   video.style.left = '50%';
   video.style.transform = 'translate(-50%, -50%)';
-  video.style.transformOrigin = 'center center'; // Ensure zoom is centered
+  video.style.transformOrigin = 'center center';
   videoContainer.style.position = 'relative';
   videoContainer.style.width = '100%';
   videoContainer.style.height = '100%';
@@ -170,13 +177,13 @@ async function init() {
 
       // Apply zoom and keep centered
       video.style.transform = `translate(-50%, -50%) scale(${zoomLevel})`;
-      initialPinchDistance = currentPinchDistance; // Update for continuous zooming
+      initialPinchDistance = currentPinchDistance;
     }
   }
 
   function handleTouchEnd(event) {
     if (event.touches.length < 2) {
-      initialPinchDistance = null; // Reset pinch distance
+      initialPinchDistance = null;
     }
   }
 
@@ -188,7 +195,7 @@ async function init() {
   // Handle full screen changes to maintain native size and reset zoom
   document.addEventListener('fullscreenchange', () => {
     if (document.fullscreenElement) {
-      zoomLevel = 1.0; // Reset zoom in full-screen
+      zoomLevel = 1.0;
       video.style.width = '';
       video.style.height = '';
       video.style.objectFit = '';
@@ -222,7 +229,7 @@ async function init() {
         shakaControlBar.style.padding = '0';
       }
     } else {
-      zoomLevel = 1.0; // Reset zoom when exiting full-screen
+      zoomLevel = 1.0;
       video.style.width = '';
       video.style.height = '';
       video.style.objectFit = '';
@@ -262,15 +269,16 @@ async function init() {
   }
 
   // Picture-in-Picture toggle
-  pipButton.addEventListener('click', () => {
+  pipButton.addEventListener('click', (e) => {
+    e.stopPropagation();
     if (document.pictureInPictureElement) {
       document.exitPictureInPicture().catch(error => {
         console.error('Error exiting PiP mode: ', error);
       });
-      zoomLevel = 1.0; // Reset zoom when exiting PiP
+      zoomLevel = 1.0;
       video.style.transform = 'translate(-50%, -50%)';
     } else {
-      zoomLevel = 1.0; // Reset zoom when entering PiP
+      zoomLevel = 1.0;
       video.style.transform = 'translate(-50%, -50%)';
       video.requestPictureInPicture().catch(error => {
         console.error('Error entering PiP mode: ', error);
@@ -411,7 +419,7 @@ async function init() {
       div.addEventListener('click', () => {
         document.querySelectorAll('#channelListLive .channel').forEach(c => c.classList.remove('active'));
         div.classList.add('active');
-        zoomLevel = 1.0; // Reset zoom when switching channels
+        zoomLevel = 1.0;
         video.style.transform = 'translate(-50%, -50%)';
         loadChannel(ch);
       });
@@ -421,6 +429,11 @@ async function init() {
 
   function populateDownloadMovies() {
     const row = document.getElementById("downloadMovies");
+    if (!row) {
+      console.error('Element #downloadMovies not found.');
+      alert('Error: Movies section not found. Please check the HTML.');
+      return;
+    }
     row.innerHTML = "";
     downloadMovies.forEach((movie) => {
       const div = document.createElement('div');
@@ -440,22 +453,44 @@ async function init() {
   }
 
   // Navigation button handlers
-  btnLive.addEventListener('click', () => {
+  btnLive.addEventListener('click', (e) => {
+    e.stopPropagation();
+    console.log('Live button clicked');
     btnLive.classList.add('bg-blue-600', 'text-white');
     btnMovies.classList.remove('bg-blue-600', 'text-white');
     btnMovies.classList.add('bg-gray-600');
-    document.getElementById('liveChannels').classList.remove('hidden');
-    document.getElementById('downloadMovies').classList.add('hidden');
-    populateLiveChannels(currentQuery);
+    const liveChannels = document.getElementById('liveChannels');
+    const downloadMovies = document.getElementById('downloadMovies');
+    if (liveChannels && downloadMovies) {
+      liveChannels.classList.remove('hidden');
+      downloadMovies.classList.add('hidden');
+      videoContainer.classList.remove('hidden'); // Show video for live channels
+      populateLiveChannels(currentQuery);
+    } else {
+      console.error('Live channels or movies section not found.');
+      alert('Error: Navigation sections not found. Please check the HTML.');
+    }
   });
 
-  btnMovies.addEventListener('click', () => {
+  btnMovies.addEventListener('click', (e) => {
+    e.stopPropagation();
+    console.log('Movies button clicked');
     btnMovies.classList.add('bg-blue-600', 'text-white');
     btnLive.classList.remove('bg-blue-600', 'text-white');
     btnLive.classList.add('bg-gray-600');
-    document.getElementById('liveChannels').classList.add('hidden');
-    document.getElementById('downloadMovies').classList.remove('hidden');
-    populateDownloadMovies();
+    const liveChannels = document.getElementById('liveChannels');
+    const downloadMovies = document.getElementById('downloadMovies');
+    if (liveChannels && downloadMovies) {
+      liveChannels.classList.add('hidden');
+      downloadMovies.classList.remove('hidden');
+      videoContainer.classList.add('hidden'); // Hide video for movies section
+      zoomLevel = 1.0;
+      video.style.transform = 'translate(-50%, -50%)';
+      populateDownloadMovies();
+    } else {
+      console.error('Live channels or movies section not found.');
+      alert('Error: Navigation sections not found. Please check the HTML.');
+    }
   });
 
   // Search handler
