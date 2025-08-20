@@ -14,7 +14,7 @@ const specialLogos = {
   "Azam One": "https://i.ibb.co/NdR0tdJz/x.jpg"
 };
 
-// Channel list (exactly 5 channels, unchanged)
+// Channel list (exactly 5 channels)
 const channels = [
   {
     name: "AMC",
@@ -112,7 +112,7 @@ const channelsWithLogos = channels.map(ch => ({
 }));
 
 // Initialize everything after DOM is loaded
-document.addEventListener('DOMContentLoaded', async () => {
+async function init() {
   const video = document.getElementById('video');
   const pipButton = document.getElementById('pipButton');
   const videoContainer = document.getElementById('videoContainer');
@@ -251,16 +251,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       let clearKeys = {};
 
       // Handle different key formats
-      if (channel.key) {
-        if (channel.key.includes(',')) {
-          channel.key.split(',').forEach(pair => {
-            const [keyId, key] = pair.split(':');
-            clearKeys[keyId] = key;
-          });
-        } else {
-          const [keyId, key] = channel.key.split(':');
+      if (channel.keyId && channel.key) {
+        clearKeys[channel.keyId] = channel.key;
+      } else if (channel.key && channel.key.includes(':')) {
+        const [keyId, key] = channel.key.split(':');
+        clearKeys[keyId] = key;
+      } else if (channel.key && channel.key.includes(',')) {
+        channel.key.split(',').forEach(pair => {
+          const [keyId, key] = pair.split(':');
           clearKeys[keyId] = key;
-        }
+        });
       }
 
       if (Object.keys(clearKeys).length > 0 && channel.drm === "clearkey") {
@@ -290,16 +290,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log("Retrying channel:", currentChannel.name);
       let clearKeys = {};
 
-      if (currentChannel.key) {
-        if (currentChannel.key.includes(',')) {
-          currentChannel.key.split(',').forEach(pair => {
-            const [keyId, key] = pair.split(':');
-            clearKeys[keyId] = key;
-          });
-        } else {
-          const [keyId, key] = currentChannel.key.split(':');
+      if (currentChannel.keyId && currentChannel.key) {
+        clearKeys[currentChannel.keyId] = currentChannel.key;
+      } else if (currentChannel.key && currentChannel.key.includes(':')) {
+        const [keyId, key] = currentChannel.key.split(':');
+        clearKeys[keyId] = key;
+      } else if (currentChannel.key && currentChannel.key.includes(',')) {
+        currentChannel.key.split(',').forEach(pair => {
+          const [keyId, key] = pair.split(':');
           clearKeys[keyId] = key;
-        }
+        });
       }
 
       if (Object.keys(clearKeys).length > 0 && currentChannel.drm === "clearkey") {
@@ -411,4 +411,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize with live channels
   populateLiveChannels();
-});
+}
+
+document.addEventListener('DOMContentLoaded', init);
