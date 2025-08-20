@@ -128,25 +128,64 @@ document.addEventListener('DOMContentLoaded', async () => {
   video.style.objectFit = 'contain'; // Default: show full video content
   video.style.width = '100%';
   video.style.height = '100%';
-  video.style.position = 'absolute'; // Ensure video is positioned to fill container
+  video.style.position = 'absolute';
   video.style.top = '0';
   video.style.left = '0';
+  videoContainer.style.position = 'relative'; // Ensure container supports absolute positioning
+  videoContainer.style.width = '100%';
+  videoContainer.style.height = '100%';
   // Add event listener to handle full screen changes
   document.addEventListener('fullscreenchange', () => {
     if (document.fullscreenElement) {
       video.style.objectFit = 'cover'; // Fill entire screen, cropping if necessary
-      video.style.width = '100vw'; // Full viewport width
-      video.style.height = '100vh'; // Full viewport height
-      video.style.position = 'fixed'; // Use fixed positioning in full screen
+      video.style.width = '100vw';
+      video.style.height = '100vh';
+      video.style.position = 'fixed';
       video.style.top = '0';
       video.style.left = '0';
-      video.style.zIndex = '9999'; // Ensure video is on top
+      video.style.zIndex = '9999';
+      videoContainer.style.width = '100vw';
+      videoContainer.style.height = '100vh';
+      videoContainer.style.position = 'fixed';
+      videoContainer.style.top = '0';
+      videoContainer.style.left = '0';
+      videoContainer.style.zIndex = '9998';
+      // Override Shaka Player UI styles to minimize black bars
+      const shakaControls = document.querySelector('.shaka-video-container');
+      if (shakaControls) {
+        shakaControls.style.width = '100vw';
+        shakaControls.style.height = '100vh';
+        shakaControls.style.padding = '0';
+        shakaControls.style.margin = '0';
+      }
+      const shakaControlBar = document.querySelector('.shaka-controls-container');
+      if (shakaControlBar) {
+        shakaControlBar.style.bottom = '0'; // Ensure controls are at the bottom edge
+        shakaControlBar.style.padding = '0';
+      }
     } else {
-      video.style.objectFit = 'contain'; // Revert to showing full content
+      video.style.objectFit = 'contain';
       video.style.width = '100%';
       video.style.height = '100%';
-      video.style.position = 'absolute'; // Revert to container-relative positioning
-      video.style.zIndex = 'auto'; // Reset z-index
+      video.style.position = 'absolute';
+      video.style.zIndex = 'auto';
+      videoContainer.style.width = '100%';
+      videoContainer.style.height = '100%';
+      videoContainer.style.position = 'relative';
+      videoContainer.style.zIndex = 'auto';
+      // Reset Shaka Player UI styles
+      const shakaControls = document.querySelector('.shaka-video-container');
+      if (shakaControls) {
+        shakaControls.style.width = '100%';
+        shakaControls.style.height = '100%';
+        shakaControls.style.padding = '';
+        shakaControls.style.margin = '';
+      }
+      const shakaControlBar = document.querySelector('.shaka-controls-container');
+      if (shakaControlBar) {
+        shakaControlBar.style.bottom = '';
+        shakaControlBar.style.padding = '';
+      }
     }
   });
 
@@ -241,7 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             clearKeys[keyId] = key;
           });
         } else {
-          const [keyId, key] = channel.key.split(':');
+          const [keyId, key] = currentChannel.key.split(':');
           clearKeys[keyId] = key;
         }
       }
