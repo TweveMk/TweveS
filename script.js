@@ -123,42 +123,79 @@ async function init() {
   const noResults = document.getElementById('noResults');
   let currentQuery = "";
   let currentChannel = null;
+  let zoomLevel = 1.0; // Default zoom level
+  let initialPinchDistance = null;
 
-  // Variables for pinch-to-zoom and panning
-  let scale = 1.0;
-  let translateX = 0;
-  let translateY = 0;
-  let lastScale = 1.0;
-  let lastX = 0;
-  let lastY = 0;
-  let isDragging = false;
-  let startX = 0;
-  let startY = 0;
-
-  // Remove default sizing and prepare for dynamic scaling
-  video.style.width = '100%'; // Initial size to fit container
-  video.style.height = '100%';
-  video.style.objectFit = 'contain'; // Preserve aspect ratio
+  // Remove all sizing customization to use native video size
+  video.style.width = '';
+  video.style.height = '';
+  video.style.objectFit = '';
   video.style.position = 'absolute';
   video.style.top = '50%';
   video.style.left = '50%';
   video.style.transform = 'translate(-50%, -50%)';
-  video.style.transformOrigin = 'center center';
+  video.style.transformOrigin = 'center center'; // Ensure zoom is centered
   videoContainer.style.position = 'relative';
   videoContainer.style.width = '100%';
   videoContainer.style.height = '100%';
-  videoContainer.style.overflow = 'hidden'; // Clip overflow when zoomed
 
-  // Handle full screen changes
+  // Pinch-to-zoom functionality
+  function handleTouchStart(event) {
+    if (event.touches.length === 2) {
+      event.preventDefault(); // Prevent default browser zoom
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      initialPinchDistance = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+      );
+    }
+  }
+
+  function handleTouchMove(event) {
+    if (event.touches.length === 2 && initialPinchDistance !== null) {
+      event.preventDefault();
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      const currentPinchDistance = Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+      );
+      const scaleChange = currentPinchDistance / initialPinchDistance;
+      let newZoomLevel = zoomLevel * scaleChange;
+
+      // Constrain zoom level between 0.5x and 3x
+      newZoomLevel = Math.max(0.5, Math.min(3, newZoomLevel));
+      zoomLevel = newZoomLevel;
+
+      // Apply zoom and keep centered
+      video.style.transform = `translate(-50%, -50%) scale(${zoomLevel})`;
+      initialPinchDistance = currentPinchDistance; // Update for continuous zooming
+    }
+  }
+
+  function handleTouchEnd(event) {
+    if (event.touches.length < 2) {
+      initialPinchDistance = null; // Reset pinch distance
+    }
+  }
+
+  // Add touch event listeners to video container
+  videoContainer.addEventListener('touchstart', handleTouchStart);
+  videoContainer.addEventListener('touchmove', handleTouchMove);
+  videoContainer.addEventListener('touchend', handleTouchEnd);
+
+  // Handle full screen changes to maintain native size and reset zoom
   document.addEventListener('fullscreenchange', () => {
     if (document.fullscreenElement) {
-      video.style.width = '100%';
-      video.style.height = '100%';
-      video.style.objectFit = 'contain';
+      zoomLevel = 1.0; // Reset zoom in full-screen
+      video.style.width = '';
+      video.style.height = '';
+      video.style.objectFit = '';
       video.style.position = 'fixed';
       video.style.top = '50%';
       video.style.left = '50%';
-      video.style.transform = `translate(-50%, -50%) scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+      video.style.transform = 'translate(-50%, -50%)';
       video.style.zIndex = '9999';
       videoContainer.style.width = '100vw';
       videoContainer.style.height = '100vh';
@@ -167,7 +204,6 @@ async function init() {
       videoContainer.style.left = '0';
       videoContainer.style.zIndex = '9998';
       videoContainer.style.background = '#000';
-      // Adjust Shaka Player UI
       const shakaControls = document.querySelector('.shaka-video-container');
       if (shakaControls) {
         shakaControls.style.width = '100vw';
@@ -186,20 +222,20 @@ async function init() {
         shakaControlBar.style.padding = '0';
       }
     } else {
-      video.style.width = '100%';
-      video.style.height = '100%';
-      video.style.objectFit = 'contain';
+      zoomLevel = 1.0; // Reset zoom when exiting full-screen
+      video.style.width = '';
+      video.style.height = '';
+      video.style.objectFit = '';
       video.style.position = 'absolute';
       video.style.top = '50%';
       video.style.left = '50%';
-      video.style.transform = `translate(-50%, -50%) scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+      video.style.transform = 'translate(-50%, -50%)';
       video.style.zIndex = 'auto';
       videoContainer.style.width = '100%';
       videoContainer.style.height = '100%';
       videoContainer.style.position = 'relative';
       videoContainer.style.zIndex = 'auto';
       videoContainer.style.background = '';
-      // Reset Shaka Player UI styles
       const shakaControls = document.querySelector('.shaka-video-container');
       if (shakaControls) {
         shakaControls.style.width = '';
@@ -220,77 +256,6 @@ async function init() {
     }
   });
 
-  // Pinch-to-zoom and panning
-  let touchPoints = [];
-  video.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    touchPoints = Array.from(e.touches);
-    if (touchPoints.length === 2) {
-      // Prepare for pinch-to-zoom
-      isDragging = false;
-    } else if (touchPoints.length === 1) {
-      // Prepare for panning
-      isDragging = true;
-      startX = touchPoints[0].clientX - translateX;
-      startY = touchPoints[0].clientY - translateY;
-    }
-  });
-
-  video.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    touchPoints = Array.from(e.touches);
-
-    if (touchPoints.length === 2) {
-      // Pinch-to-zoom
-      isDragging = false;
-      const touch1 = touchPoints[0];
-      const touch2 = touchPoints[1];
-      const dx = touch1.clientX - touch2.clientX;
-      const dy = touch1.clientY - touch2.clientY;
-      const currentDistance = Math.sqrt(dx * dx + dy * dy);
-      const midX = (touch1.clientX + touch2.clientX) / 2;
-      const midY = (touch1.clientY + touch2.clientY) / 2;
-
-      if (e.scale !== undefined) {
-        // Use native scale if available
-        scale = lastScale * e.scale;
-      } else {
-        // Calculate scale based on touch distance
-        if (!video.dataset.lastDistance) {
-          video.dataset.lastDistance = currentDistance;
-        }
-        const lastDistance = parseFloat(video.dataset.lastDistance);
-        scale = lastScale * (currentDistance / lastDistance);
-      }
-
-      // Limit scale (e.g., 0.5x to 3x)
-      scale = Math.min(Math.max(0.5, scale), 3.0);
-
-      // Update transform
-      video.style.transform = `translate(-50%, -50%) scale(${scale}) translate(${translateX}px, ${translateY}px)`;
-      video.dataset.lastDistance = currentDistance;
-    } else if (touchPoints.length === 1 && isDragging) {
-      // Panning
-      translateX = touchPoints[0].clientX - startX;
-      translateY = touchPoints[0].clientY - startY;
-      // Limit panning to prevent moving too far
-      const maxTranslate = 100 * scale; // Adjust based on scale
-      translateX = Math.min(Math.max(-maxTranslate, translateX), maxTranslate);
-      translateY = Math.min(Math.max(-maxTranslate, translateY), maxTranslate);
-      video.style.transform = `translate(-50%, -50%) scale(${scale}) translate(${translateX}px, ${translateY}px)`;
-    }
-  });
-
-  video.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    touchPoints = Array.from(e.touches);
-    if (touchPoints.length < 2) {
-      lastScale = scale;
-      video.dataset.lastDistance = '';
-      isDragging = false;
-    }
-  });
-
   // Check Picture-in-Picture support
   if (!document.pictureInPictureEnabled) {
     pipButton.style.display = 'none';
@@ -302,7 +267,11 @@ async function init() {
       document.exitPictureInPicture().catch(error => {
         console.error('Error exiting PiP mode: ', error);
       });
+      zoomLevel = 1.0; // Reset zoom when exiting PiP
+      video.style.transform = 'translate(-50%, -50%)';
     } else {
+      zoomLevel = 1.0; // Reset zoom when entering PiP
+      video.style.transform = 'translate(-50%, -50%)';
       video.requestPictureInPicture().catch(error => {
         console.error('Error entering PiP mode: ', error);
       });
@@ -335,7 +304,6 @@ async function init() {
       await player.attach(video);
       let clearKeys = {};
 
-      // Handle different key formats
       if (channel.keyId && channel.key) {
         clearKeys[channel.keyId] = channel.key;
       } else if (channel.key && channel.key.includes(':')) {
@@ -375,7 +343,7 @@ async function init() {
       console.log("Retrying channel:", currentChannel.name);
       let clearKeys = {};
 
-      if (currentChannel.keyId && channel.key) {
+      if (currentChannel.keyId && currentChannel.key) {
         clearKeys[currentChannel.keyId] = currentChannel.key;
       } else if (currentChannel.key && currentChannel.key.includes(':')) {
         const [keyId, key] = currentChannel.key.split(':');
@@ -443,6 +411,8 @@ async function init() {
       div.addEventListener('click', () => {
         document.querySelectorAll('#channelListLive .channel').forEach(c => c.classList.remove('active'));
         div.classList.add('active');
+        zoomLevel = 1.0; // Reset zoom when switching channels
+        video.style.transform = 'translate(-50%, -50%)';
         loadChannel(ch);
       });
       channelListElement.appendChild(div);
