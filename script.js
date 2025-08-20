@@ -14,7 +14,7 @@ const specialLogos = {
   "Azam One": "https://i.ibb.co/NdR0tdJz/x.jpg"
 };
 
-// Channel list (exactly 5 channels)
+// Channel list
 const channels = [
   {
     name: "AMC",
@@ -53,7 +53,7 @@ const channels = [
   }
 ];
 
-// Download-only movies (unchanged)
+// Download-only movies
 const downloadMovies = [
   {
     name: "Ghost",
@@ -111,7 +111,7 @@ const channelsWithLogos = channels.map(ch => ({
   logo: specialLogos[ch.name] || mainLogo
 }));
 
-// Initialize everything after DOM is loaded
+// Initialize everything
 async function init() {
   const video = document.getElementById('video');
   const pipButton = document.getElementById('pipButton');
@@ -121,12 +121,13 @@ async function init() {
   const btnMovies = document.getElementById('btnMovies');
   const liveSearch = document.getElementById('liveSearch');
   const noResults = document.getElementById('noResults');
+
   let currentQuery = "";
   let currentChannel = null;
-  let zoomLevel = 1.0; // Default zoom level
+  let zoomLevel = 1.0;
   let initialPinchDistance = null;
 
-  // Remove all sizing customization to use native video size
+  // Styles
   video.style.width = '';
   video.style.height = '';
   video.style.objectFit = '';
@@ -134,236 +135,113 @@ async function init() {
   video.style.top = '50%';
   video.style.left = '50%';
   video.style.transform = 'translate(-50%, -50%)';
-  video.style.transformOrigin = 'center center'; // Ensure zoom is centered
+  video.style.transformOrigin = 'center center';
   videoContainer.style.position = 'relative';
   videoContainer.style.width = '100%';
   videoContainer.style.height = '100%';
 
-  // Pinch-to-zoom functionality
+  // Pinch zoom events
   function handleTouchStart(event) {
     if (event.touches.length === 2) {
-      event.preventDefault(); // Prevent default browser zoom
-      const touch1 = event.touches[0];
-      const touch2 = event.touches[1];
+      event.preventDefault();
+      const [touch1, touch2] = event.touches;
       initialPinchDistance = Math.hypot(
         touch1.clientX - touch2.clientX,
         touch1.clientY - touch2.clientY
       );
     }
   }
-
   function handleTouchMove(event) {
     if (event.touches.length === 2 && initialPinchDistance !== null) {
       event.preventDefault();
-      const touch1 = event.touches[0];
-      const touch2 = event.touches[1];
+      const [touch1, touch2] = event.touches;
       const currentPinchDistance = Math.hypot(
         touch1.clientX - touch2.clientX,
         touch1.clientY - touch2.clientY
       );
       const scaleChange = currentPinchDistance / initialPinchDistance;
-      let newZoomLevel = zoomLevel * scaleChange;
-
-      // Constrain zoom level between 0.5x and 3x
-      newZoomLevel = Math.max(0.5, Math.min(3, newZoomLevel));
-      zoomLevel = newZoomLevel;
-
-      // Apply zoom and keep centered
+      let newZoom = zoomLevel * scaleChange;
+      newZoom = Math.max(0.5, Math.min(3, newZoom));
+      zoomLevel = newZoom;
       video.style.transform = `translate(-50%, -50%) scale(${zoomLevel})`;
-      initialPinchDistance = currentPinchDistance; // Update for continuous zooming
+      initialPinchDistance = currentPinchDistance;
     }
   }
-
   function handleTouchEnd(event) {
-    if (event.touches.length < 2) {
-      initialPinchDistance = null; // Reset pinch distance
-    }
+    if (event.touches.length < 2) initialPinchDistance = null;
   }
 
-  // Add touch event listeners to video container
   videoContainer.addEventListener('touchstart', handleTouchStart);
   videoContainer.addEventListener('touchmove', handleTouchMove);
   videoContainer.addEventListener('touchend', handleTouchEnd);
 
-  // Handle full screen changes to maintain native size and reset zoom
-  document.addEventListener('fullscreenchange', () => {
-    if (document.fullscreenElement) {
-      zoomLevel = 1.0; // Reset zoom in full-screen
-      video.style.width = '';
-      video.style.height = '';
-      video.style.objectFit = '';
-      video.style.position = 'fixed';
-      video.style.top = '50%';
-      video.style.left = '50%';
-      video.style.transform = 'translate(-50%, -50%)';
-      video.style.zIndex = '9999';
-      videoContainer.style.width = '100vw';
-      videoContainer.style.height = '100vh';
-      videoContainer.style.position = 'fixed';
-      videoContainer.style.top = '0';
-      videoContainer.style.left = '0';
-      videoContainer.style.zIndex = '9998';
-      videoContainer.style.background = '#000';
-      const shakaControls = document.querySelector('.shaka-video-container');
-      if (shakaControls) {
-        shakaControls.style.width = '100vw';
-        shakaControls.style.height = '100vh';
-        shakaControls.style.padding = '0';
-        shakaControls.style.margin = '0';
-        shakaControls.style.display = 'flex';
-        shakaControls.style.justifyContent = 'center';
-        shakaControls.style.alignItems = 'center';
+  // Picture-in-Picture
+  if (pipButton && !document.pictureInPictureEnabled) pipButton.style.display = 'none';
+  if (pipButton) {
+    pipButton.addEventListener('click', () => {
+      if (document.pictureInPictureElement) {
+        document.exitPictureInPicture().catch(console.error);
+        zoomLevel = 1.0;
+        video.style.transform = 'translate(-50%, -50%)';
+      } else {
+        zoomLevel = 1.0;
+        video.style.transform = 'translate(-50%, -50%)';
+        video.requestPictureInPicture().catch(console.error);
       }
-      const shakaControlBar = document.querySelector('.shaka-controls-container');
-      if (shakaControlBar) {
-        shakaControlBar.style.position = 'absolute';
-        shakaControlBar.style.bottom = '0';
-        shakaControlBar.style.width = '100%';
-        shakaControlBar.style.padding = '0';
-      }
-    } else {
-      zoomLevel = 1.0; // Reset zoom when exiting full-screen
-      video.style.width = '';
-      video.style.height = '';
-      video.style.objectFit = '';
-      video.style.position = 'absolute';
-      video.style.top = '50%';
-      video.style.left = '50%';
-      video.style.transform = 'translate(-50%, -50%)';
-      video.style.zIndex = 'auto';
-      videoContainer.style.width = '100%';
-      videoContainer.style.height = '100%';
-      videoContainer.style.position = 'relative';
-      videoContainer.style.zIndex = 'auto';
-      videoContainer.style.background = '';
-      const shakaControls = document.querySelector('.shaka-video-container');
-      if (shakaControls) {
-        shakaControls.style.width = '';
-        shakaControls.style.height = '';
-        shakaControls.style.padding = '';
-        shakaControls.style.margin = '';
-        shakaControls.style.display = '';
-        shakaControls.style.justifyContent = '';
-        shakaControls.style.alignItems = '';
-      }
-      const shakaControlBar = document.querySelector('.shaka-controls-container');
-      if (shakaControlBar) {
-        shakaControlBar.style.position = '';
-        shakaControlBar.style.bottom = '';
-        shakaControlBar.style.width = '';
-        shakaControlBar.style.padding = '';
-      }
-    }
-  });
-
-  // Check Picture-in-Picture support
-  if (!document.pictureInPictureEnabled) {
-    pipButton.style.display = 'none';
+    });
   }
 
-  // Picture-in-Picture toggle
-  pipButton.addEventListener('click', () => {
-    if (document.pictureInPictureElement) {
-      document.exitPictureInPicture().catch(error => {
-        console.error('Error exiting PiP mode: ', error);
-      });
-      zoomLevel = 1.0; // Reset zoom when exiting PiP
-      video.style.transform = 'translate(-50%, -50%)';
-    } else {
-      zoomLevel = 1.0; // Reset zoom when entering PiP
-      video.style.transform = 'translate(-50%, -50%)';
-      video.requestPictureInPicture().catch(error => {
-        console.error('Error entering PiP mode: ', error);
-      });
-    }
-  });
-
-  // Initialize Shaka Player
+  // Shaka setup
   shaka.polyfill.installAll();
   if (!shaka.Player.isBrowserSupported()) {
-    console.error('Browser not supported by Shaka Player.');
     alert('Your browser does not support Shaka Player.');
     return;
   }
-
   const player = new shaka.Player(video);
   const shakaUi = new shaka.ui.Overlay(player, videoContainer, video);
   shakaUi.configure({
     overflowMenuButtons: ['quality', 'language', 'captions', 'playback_rate', 'cast']
   });
-
-  // Error handling for Shaka Player
-  player.addEventListener('error', onError);
+  player.addEventListener('error', (e) => {
+    console.error("Shaka Error:", e.detail);
+    retryLoad();
+  });
 
   async function loadChannel(channel) {
     currentChannel = channel;
-    videoContainer.classList.remove('hidden');
-    videoContainer.classList.add('active');
-
     try {
       await player.attach(video);
       let clearKeys = {};
-
-      if (channel.keyId && channel.key) {
-        clearKeys[channel.keyId] = channel.key;
-      } else if (channel.key && channel.key.includes(':')) {
-        const [keyId, key] = channel.key.split(':');
-        clearKeys[keyId] = key;
-      } else if (channel.key && channel.key.includes(',')) {
-        channel.key.split(',').forEach(pair => {
-          const [keyId, key] = pair.split(':');
-          clearKeys[keyId] = key;
-        });
+      if (channel.key && channel.key.includes(':')) {
+        const [id, key] = channel.key.split(':');
+        clearKeys[id] = key;
       }
-
       if (Object.keys(clearKeys).length > 0 && channel.drm === "clearkey") {
         player.configure({ drm: { clearKeys } });
-      } else {
-        player.configure({ drm: {} });
       }
-
       await player.load(channel.src);
       video.muted = false;
-      await video.play().catch(err => console.warn("Autoplay blocked:", err));
-      console.log("Now playing:", channel.name);
+      await video.play().catch(() => {});
     } catch (err) {
       console.error("Load error:", err);
       retryLoad();
     }
   }
 
-  function onError(event) {
-    console.error("Shaka Error:", event.detail);
-    retryLoad();
-  }
-
   async function retryLoad() {
     if (!currentChannel) return;
     try {
-      console.log("Retrying channel:", currentChannel.name);
       let clearKeys = {};
-
-      if (currentChannel.keyId && currentChannel.key) {
-        clearKeys[currentChannel.keyId] = currentChannel.key;
-      } else if (currentChannel.key && currentChannel.key.includes(':')) {
-        const [keyId, key] = currentChannel.key.split(':');
-        clearKeys[keyId] = key;
-      } else if (currentChannel.key && currentChannel.key.includes(',')) {
-        currentChannel.key.split(',').forEach(pair => {
-          const [keyId, key] = pair.split(':');
-          clearKeys[keyId] = key;
-        });
+      if (currentChannel.key && currentChannel.key.includes(':')) {
+        const [id, key] = currentChannel.key.split(':');
+        clearKeys[id] = key;
       }
-
       if (Object.keys(clearKeys).length > 0 && currentChannel.drm === "clearkey") {
         player.configure({ drm: { clearKeys } });
-      } else {
-        player.configure({ drm: {} });
       }
-
       await player.load(currentChannel.src);
       video.muted = false;
-      await video.play().catch(err => console.warn("Autoplay blocked:", err));
+      await video.play().catch(() => {});
     } catch (e) {
       console.error("Retry failed:", e);
       setTimeout(retryLoad, 10000);
@@ -372,34 +250,26 @@ async function init() {
 
   function autoReload() {
     setInterval(() => {
-      if (video.readyState < 2 || video.paused) {
-        console.warn("Stream stuck, reloading...");
-        retryLoad();
-      }
+      if (video.readyState < 2 || video.paused) retryLoad();
     }, 5000);
   }
-
-  // Start auto-reload
   autoReload();
 
-  // Renders channels based on a query
+  // Populate live
   function populateLiveChannels(query = "") {
+    if (!channelListElement) return;
     const q = query.trim().toLowerCase();
     channelListElement.innerHTML = "";
-
-    const filtered = channelsWithLogos.filter(ch => {
-      const name = ch.name?.toLowerCase() || "";
-      const cat = (ch.category || "").toLowerCase();
-      return name.includes(q) || cat.includes(q);
-    });
-
+    const filtered = channelsWithLogos.filter(ch =>
+      (ch.name?.toLowerCase() || "").includes(q) ||
+      (ch.category?.toLowerCase() || "").includes(q)
+    );
     if (filtered.length === 0) {
-      noResults.classList.remove('hidden');
+      if (noResults) noResults.classList.remove('hidden');
       return;
     } else {
-      noResults.classList.add('hidden');
+      if (noResults) noResults.classList.add('hidden');
     }
-
     filtered.forEach((ch) => {
       const div = document.createElement('div');
       div.className = 'channel bg-gray-700 rounded-xl p-3 cursor-pointer text-center shadow-md hover:shadow-xl transition';
@@ -411,7 +281,7 @@ async function init() {
       div.addEventListener('click', () => {
         document.querySelectorAll('#channelListLive .channel').forEach(c => c.classList.remove('active'));
         div.classList.add('active');
-        zoomLevel = 1.0; // Reset zoom when switching channels
+        zoomLevel = 1.0;
         video.style.transform = 'translate(-50%, -50%)';
         loadChannel(ch);
       });
@@ -419,8 +289,10 @@ async function init() {
     });
   }
 
+  // Populate movies
   function populateDownloadMovies() {
     const row = document.getElementById("downloadMovies");
+    if (!row) return;
     row.innerHTML = "";
     downloadMovies.forEach((movie) => {
       const div = document.createElement('div');
@@ -439,32 +311,41 @@ async function init() {
     });
   }
 
-  // Navigation button handlers
-  btnLive.addEventListener('click', () => {
-    btnLive.classList.add('bg-blue-600', 'text-white');
-    btnMovies.classList.remove('bg-blue-600', 'text-white');
-    btnMovies.classList.add('bg-gray-600');
-    document.getElementById('liveChannels').classList.remove('hidden');
-    document.getElementById('downloadMovies').classList.add('hidden');
-    populateLiveChannels(currentQuery);
-  });
+  // Navigation buttons
+  if (btnLive) {
+    btnLive.addEventListener('click', () => {
+      btnLive.classList.add('bg-blue-600', 'text-white');
+      if (btnMovies) {
+        btnMovies.classList.remove('bg-blue-600', 'text-white');
+        btnMovies.classList.add('bg-gray-600');
+      }
+      document.getElementById('liveChannels')?.classList.remove('hidden');
+      document.getElementById('downloadMovies')?.classList.add('hidden');
+      populateLiveChannels(currentQuery);
+    });
+  }
+  if (btnMovies) {
+    btnMovies.addEventListener('click', () => {
+      btnMovies.classList.add('bg-blue-600', 'text-white');
+      if (btnLive) {
+        btnLive.classList.remove('bg-blue-600', 'text-white');
+        btnLive.classList.add('bg-gray-600');
+      }
+      document.getElementById('liveChannels')?.classList.add('hidden');
+      document.getElementById('downloadMovies')?.classList.remove('hidden');
+      populateDownloadMovies();
+    });
+  }
 
-  btnMovies.addEventListener('click', () => {
-    btnMovies.classList.add('bg-blue-600', 'text-white');
-    btnLive.classList.remove('bg-blue-600', 'text-white');
-    btnLive.classList.add('bg-gray-600');
-    document.getElementById('liveChannels').classList.add('hidden');
-    document.getElementById('downloadMovies').classList.remove('hidden');
-    populateDownloadMovies();
-  });
+  // Search
+  if (liveSearch) {
+    liveSearch.addEventListener('input', (e) => {
+      currentQuery = e.target.value;
+      populateLiveChannels(currentQuery);
+    });
+  }
 
-  // Search handler
-  liveSearch.addEventListener('input', (e) => {
-    currentQuery = e.target.value;
-    populateLiveChannels(currentQuery);
-  });
-
-  // Initialize with live channels
+  // Init load
   populateLiveChannels();
 }
 
