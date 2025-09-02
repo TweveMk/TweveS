@@ -989,6 +989,9 @@ async function init() {
   const btnMovies = document.getElementById('btnMovies');
   const liveSearch = document.getElementById('liveSearch');
   const noResults = document.getElementById('noResults');
+  const nowPlayingBadge = document.getElementById('nowPlaying');
+  const playerLoading = document.getElementById('playerLoading');
+  const playerError = document.getElementById('playerError');
   const loginOverlay = document.getElementById('loginOverlay');
   const loginPhone = document.getElementById('loginPhone');
   const loginPassword = document.getElementById('loginPassword');
@@ -1218,6 +1221,28 @@ async function init() {
     overflowMenuButtons: ['quality', 'language', 'captions', 'playback_rate', 'cast']
   });
 
+  // Stronger buffering/retry config
+  player.configure({
+    streaming: {
+      bufferingGoal: 30, // seconds
+      rebufferingGoal: 8,
+      stallEnabled: true,
+      stallThreshold: 1,
+      stallSkip: 1
+    },
+    manifest: {
+      retryParameters: {
+        maxAttempts: 6,
+        baseDelay: 500,
+        backoffFactor: 2,
+        fuzzFactor: 0.5,
+        timeout: 0
+      }
+    },
+    drm: { retryParameters: { maxAttempts: 6, baseDelay: 500, backoffFactor: 2, fuzzFactor: 0.5, timeout: 0 } },
+    abr: { defaultBandwidthEstimate: 5_000_000 }
+  });
+
   // Error handling for Shaka Player
   player.addEventListener('error', onError);
 
@@ -1225,6 +1250,8 @@ async function init() {
     currentChannel = channel;
     videoContainer.classList.remove('hidden');
     videoContainer.classList.add('active');
+    if (playerLoading) playerLoading.classList.remove('hidden');
+    if (playerError) playerError.classList.add('hidden');
 
     try {
       await player.attach(video);
@@ -1252,8 +1279,12 @@ async function init() {
       video.muted = false;
       await video.play().catch(err => console.warn("Autoplay blocked:", err));
       console.log("Now playing:", channel.name);
+      if (nowPlayingBadge) nowPlayingBadge.classList.remove('hidden');
+      if (playerLoading) playerLoading.classList.add('hidden');
     } catch (err) {
       console.error("Load error:", err);
+      if (playerLoading) playerLoading.classList.add('hidden');
+      if (playerError) playerError.classList.remove('hidden');
       retryLoad();
     }
   }
@@ -1267,6 +1298,7 @@ async function init() {
     if (!currentChannel) return;
     try {
       console.log("Retrying channel:", currentChannel.name);
+      if (playerLoading) playerLoading.classList.remove('hidden');
       let clearKeys = {};
 
       if (currentChannel.keyId && currentChannel.key) {
@@ -1290,6 +1322,8 @@ async function init() {
       await player.load(currentChannel.src);
       video.muted = false;
       await video.play().catch(err => console.warn("Autoplay blocked:", err));
+      if (playerError) playerError.classList.add('hidden');
+      if (playerLoading) playerLoading.classList.add('hidden');
     } catch (e) {
       console.error("Retry failed:", e);
       setTimeout(retryLoad, 10000);
@@ -1326,22 +1360,49 @@ async function init() {
       noResults.classList.add('hidden');
     }
 
-    filtered.forEach((ch) => {
-      const div = document.createElement('div');
-      div.className = 'channel bg-gray-700 rounded-xl p-3 cursor-pointer text-center shadow-md hover:shadow-xl transition';
-      div.innerHTML = `
-        <img src="${ch.logo}" alt="${ch.name}" class="mb-2 mx-auto border-2 border-white shadow">
-        <p class="text-sm font-semibold truncate">${ch.name}</p>
-        <p class="text-[10px] text-slate-300 mt-1">${ch.category || 'Live'}</p>
+    // Group by category
+    const grouped = filtered.reduce((acc, ch) => {
+      const cat = ch.category || 'Other';
+      (acc[cat] = acc[cat] || []).push(ch);
+      return acc;
+    }, {});
+
+    // Render groups
+    Object.keys(grouped).sort().forEach(category => {
+      const section = document.createElement('div');
+      section.style.marginBottom = '18px';
+
+      const header = document.createElement('div');
+      header.className = 'flex items-center justify-between mb-2';
+      header.innerHTML = `
+        <h3 class="text-lg font-semibold">${category}</h3>
+        <span class="text-xs text-slate-400">${grouped[category].length} channels</span>
       `;
-      div.addEventListener('click', () => {
-        document.querySelectorAll('#channelListLive .channel').forEach(c => c.classList.remove('active'));
-        div.classList.add('active');
-        zoomLevel = 1.0; // Reset zoom when switching channels
-        video.style.transform = 'translate(-50%, -50%)';
-        loadChannel(ch);
+      section.appendChild(header);
+
+      const grid = document.createElement('div');
+      grid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4';
+
+      grouped[category].forEach((ch) => {
+        const div = document.createElement('div');
+        div.className = 'channel bg-gray-700 rounded-xl p-3 cursor-pointer text-center shadow-md hover:shadow-xl transition';
+        div.innerHTML = `
+          <img src="${ch.logo}" alt="${ch.name}" class="mb-2 mx-auto border-2 border-white shadow">
+          <p class="text-sm font-semibold truncate">${ch.name}</p>
+          <p class="text-[10px] text-slate-300 mt-1">${ch.category || 'Live'}</p>
+        `;
+        div.addEventListener('click', () => {
+          document.querySelectorAll('#channelListLive .channel').forEach(c => c.classList.remove('active'));
+          div.classList.add('active');
+          zoomLevel = 1.0;
+          video.style.transform = 'translate(-50%, -50%)';
+          loadChannel(ch);
+        });
+        grid.appendChild(div);
       });
-      channelListElement.appendChild(div);
+
+      section.appendChild(grid);
+      channelListElement.appendChild(section);
     });
   }
 

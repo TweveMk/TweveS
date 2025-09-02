@@ -10,6 +10,10 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="flex flex-col min-h-screen">
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="site-title">TWEVE LIVE</div>
+  </header>
 
   <!-- Login Overlay -->
   <div id="loginOverlay" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[1000] hidden">
@@ -29,6 +33,11 @@
     <div class="w-full max-w-4xl mx-auto aspect-video rounded-lg shadow-lg overflow-hidden relative">
       <video id="video" class="w-full h-full"></video>
       <button id="pipButton" title="Picture-in-Picture">PiP</button>
+      <div id="nowPlaying" class="hidden absolute left-3 top-3 text-xs font-bold bg-cyan-400/90 text-black px-2 py-1 rounded">NOW PLAYING</div>
+      <div id="playerLoading" class="hidden absolute inset-0 flex items-center justify-center bg-black/60">
+        <div class="loader-spinner"></div>
+      </div>
+      <div id="playerError" class="hidden absolute left-1/2 -translate-x-1/2 bottom-3 bg-red-500 text-black text-xs font-semibold px-3 py-2 rounded shadow">Playback error. Retrying...</div>
     </div>
   </div>
 
