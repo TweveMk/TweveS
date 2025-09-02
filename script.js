@@ -1380,28 +1380,42 @@ async function init() {
       `;
       section.appendChild(header);
 
-      const grid = document.createElement('div');
-      grid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4';
+      const list = document.createElement('div');
+      list.className = 'channel-list';
 
       grouped[category].forEach((ch) => {
-        const div = document.createElement('div');
-        div.className = 'channel bg-gray-700 rounded-xl p-3 cursor-pointer text-center shadow-md hover:shadow-xl transition';
-        div.innerHTML = `
-          <img src="${ch.logo}" alt="${ch.name}" class="mb-2 mx-auto border-2 border-white shadow">
-          <p class="text-sm font-semibold truncate">${ch.name}</p>
-          <p class="text-[10px] text-slate-300 mt-1">${ch.category || 'Live'}</p>
+        const row = document.createElement('div');
+        row.className = 'channel-row';
+        row.innerHTML = `
+          <div class="channel-logo"><img src="${ch.logo}" alt="${ch.name}"></div>
+          <div class="channel-info">
+            <div class="channel-name">${ch.name}</div>
+            <div class="channel-meta"><span class="badge-cat">${ch.category || 'Live'}</span><span>Tap to play</span></div>
+          </div>
+          <div>
+            <button class="play-btn">Play ▶</button>
+          </div>
         `;
-        div.addEventListener('click', () => {
-          document.querySelectorAll('#channelListLive .channel').forEach(c => c.classList.remove('active'));
-          div.classList.add('active');
+        const playBtn = row.querySelector('.play-btn');
+        function play() {
+          document.querySelectorAll('#channelListLive .channel-row').forEach(c => c.classList.remove('active'));
+          row.classList.add('active');
           zoomLevel = 1.0;
           video.style.transform = 'translate(-50%, -50%)';
           loadChannel(ch);
+        }
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('.play-btn')) return; // button handles its own
+          play();
         });
-        grid.appendChild(div);
+        playBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          play();
+        });
+        list.appendChild(row);
       });
 
-      section.appendChild(grid);
+      section.appendChild(list);
       channelListElement.appendChild(section);
     });
   }
