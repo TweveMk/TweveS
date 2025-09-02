@@ -11,6 +11,19 @@
 </head>
 <body class="flex flex-col min-h-screen">
 
+  <!-- Login Overlay -->
+  <div id="loginOverlay" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[1000] hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+      <h1 class="text-lg font-semibold mb-4 text-center">Ingia</h1>
+      <div class="space-y-3">
+        <input id="loginPhone" type="tel" inputmode="tel" placeholder="Namba ya simu" class="w-full rounded-xl bg-slate-800 border border-slate-600 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+        <input id="loginPassword" type="password" placeholder="Nenosiri" class="w-full rounded-xl bg-slate-800 border border-slate-600 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" />
+        <button id="loginSubmit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-black font-semibold rounded-xl px-4 py-2">Ingia</button>
+        <p id="loginError" class="text-red-400 text-sm text-center hidden">Imeshindikana kuingia. Hakikisha namba/nenosiri.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Sticky Player Container -->
   <div id="videoContainer" class="bg-black sticky top-0 z-50 p-4">
     <div class="w-full max-w-4xl mx-auto aspect-video rounded-lg shadow-lg overflow-hidden relative">

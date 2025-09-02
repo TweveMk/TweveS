@@ -989,6 +989,11 @@ async function init() {
   const btnMovies = document.getElementById('btnMovies');
   const liveSearch = document.getElementById('liveSearch');
   const noResults = document.getElementById('noResults');
+  const loginOverlay = document.getElementById('loginOverlay');
+  const loginPhone = document.getElementById('loginPhone');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginSubmit = document.getElementById('loginSubmit');
+  const loginError = document.getElementById('loginError');
   let currentQuery = "";
   let currentChannel = null;
   let zoomLevel = 1.0; // Default zoom level
@@ -1123,6 +1128,59 @@ async function init() {
       }
     }
   });
+
+  // Simple local auth gate (phone + password)
+  function isLoggedIn() {
+    try {
+      const token = localStorage.getItem('auth_token');
+      return Boolean(token);
+    } catch (_) { return false; }
+  }
+
+  function showLogin() {
+    if (loginOverlay) loginOverlay.classList.remove('hidden');
+  }
+
+  function hideLogin() {
+    if (loginOverlay) loginOverlay.classList.add('hidden');
+  }
+
+  function validatePhone(phone) {
+    if (!phone) return false;
+    const digits = phone.replace(/\D/g, '');
+    return digits.length >= 9; // minimal sanity check
+  }
+
+  function doLogin() {
+    const phone = (loginPhone?.value || '').trim();
+    const pass = (loginPassword?.value || '').trim();
+    if (!validatePhone(phone) || pass.length < 4) {
+      if (loginError) loginError.classList.remove('hidden');
+      return;
+    }
+    try {
+      localStorage.setItem('auth_token', btoa(phone + ':' + pass));
+      if (loginError) loginError.classList.add('hidden');
+      hideLogin();
+    } catch (e) {
+      if (loginError) loginError.classList.remove('hidden');
+    }
+  }
+
+  if (loginSubmit) {
+    loginSubmit.addEventListener('click', doLogin);
+  }
+  if (loginPassword) {
+    loginPassword.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doLogin();
+    });
+  }
+
+  if (!isLoggedIn()) {
+    showLogin();
+  } else {
+    hideLogin();
+  }
 
   // Check Picture-in-Picture support
   if (!document.pictureInPictureEnabled) {
