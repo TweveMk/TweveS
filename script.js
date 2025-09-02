@@ -989,14 +989,6 @@ async function init() {
   const btnMovies = document.getElementById('btnMovies');
   const liveSearch = document.getElementById('liveSearch');
   const noResults = document.getElementById('noResults');
-  const nowPlayingBadge = document.getElementById('nowPlaying');
-  const playerLoading = document.getElementById('playerLoading');
-  const playerError = document.getElementById('playerError');
-  const loginOverlay = document.getElementById('loginOverlay');
-  const loginPhone = document.getElementById('loginPhone');
-  const loginPassword = document.getElementById('loginPassword');
-  const loginSubmit = document.getElementById('loginSubmit');
-  const loginError = document.getElementById('loginError');
   let currentQuery = "";
   let currentChannel = null;
   let zoomLevel = 1.0; // Default zoom level
@@ -1090,13 +1082,6 @@ async function init() {
         shakaControls.style.justifyContent = 'center';
         shakaControls.style.alignItems = 'center';
       }
-      const shakaControlBar = document.querySelector('.shaka-controls-container');
-      if (shakaControlBar) {
-        shakaControlBar.style.position = 'absolute';
-        shakaControlBar.style.bottom = '0';
-        shakaControlBar.style.width = '100%';
-        shakaControlBar.style.padding = '0';
-      }
     } else {
       zoomLevel = 1.0; // Reset zoom when exiting full-screen
       video.style.width = '';
@@ -1122,68 +1107,8 @@ async function init() {
         shakaControls.style.justifyContent = '';
         shakaControls.style.alignItems = '';
       }
-      const shakaControlBar = document.querySelector('.shaka-controls-container');
-      if (shakaControlBar) {
-        shakaControlBar.style.position = '';
-        shakaControlBar.style.bottom = '';
-        shakaControlBar.style.width = '';
-        shakaControlBar.style.padding = '';
-      }
     }
   });
-
-  // Simple local auth gate (phone + password)
-  function isLoggedIn() {
-    try {
-      const token = localStorage.getItem('auth_token');
-      return Boolean(token);
-    } catch (_) { return false; }
-  }
-
-  function showLogin() {
-    if (loginOverlay) loginOverlay.classList.remove('hidden');
-  }
-
-  function hideLogin() {
-    if (loginOverlay) loginOverlay.classList.add('hidden');
-  }
-
-  function validatePhone(phone) {
-    if (!phone) return false;
-    const digits = phone.replace(/\D/g, '');
-    return digits.length >= 9; // minimal sanity check
-  }
-
-  function doLogin() {
-    const phone = (loginPhone?.value || '').trim();
-    const pass = (loginPassword?.value || '').trim();
-    if (!validatePhone(phone) || pass.length < 4) {
-      if (loginError) loginError.classList.remove('hidden');
-      return;
-    }
-    try {
-      localStorage.setItem('auth_token', btoa(phone + ':' + pass));
-      if (loginError) loginError.classList.add('hidden');
-      hideLogin();
-    } catch (e) {
-      if (loginError) loginError.classList.remove('hidden');
-    }
-  }
-
-  if (loginSubmit) {
-    loginSubmit.addEventListener('click', doLogin);
-  }
-  if (loginPassword) {
-    loginPassword.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') doLogin();
-    });
-  }
-
-  if (!isLoggedIn()) {
-    showLogin();
-  } else {
-    hideLogin();
-  }
 
   // Check Picture-in-Picture support
   if (!document.pictureInPictureEnabled) {
@@ -1211,7 +1136,6 @@ async function init() {
   shaka.polyfill.installAll();
   if (!shaka.Player.isBrowserSupported()) {
     console.error('Browser not supported by Shaka Player.');
-    alert('Your browser does not support Shaka Player.');
     return;
   }
 
@@ -1221,28 +1145,6 @@ async function init() {
     overflowMenuButtons: ['quality', 'language', 'captions', 'playback_rate', 'cast']
   });
 
-  // Stronger buffering/retry config
-  player.configure({
-    streaming: {
-      bufferingGoal: 30, // seconds
-      rebufferingGoal: 8,
-      stallEnabled: true,
-      stallThreshold: 1,
-      stallSkip: 1
-    },
-    manifest: {
-      retryParameters: {
-        maxAttempts: 6,
-        baseDelay: 500,
-        backoffFactor: 2,
-        fuzzFactor: 0.5,
-        timeout: 0
-      }
-    },
-    drm: { retryParameters: { maxAttempts: 6, baseDelay: 500, backoffFactor: 2, fuzzFactor: 0.5, timeout: 0 } },
-    abr: { defaultBandwidthEstimate: 5_000_000 }
-  });
-
   // Error handling for Shaka Player
   player.addEventListener('error', onError);
 
@@ -1250,8 +1152,6 @@ async function init() {
     currentChannel = channel;
     videoContainer.classList.remove('hidden');
     videoContainer.classList.add('active');
-    if (playerLoading) playerLoading.classList.remove('hidden');
-    if (playerError) playerError.classList.add('hidden');
 
     try {
       await player.attach(video);
@@ -1279,12 +1179,8 @@ async function init() {
       video.muted = false;
       await video.play().catch(err => console.warn("Autoplay blocked:", err));
       console.log("Now playing:", channel.name);
-      if (nowPlayingBadge) nowPlayingBadge.classList.remove('hidden');
-      if (playerLoading) playerLoading.classList.add('hidden');
     } catch (err) {
       console.error("Load error:", err);
-      if (playerLoading) playerLoading.classList.add('hidden');
-      if (playerError) playerError.classList.remove('hidden');
       retryLoad();
     }
   }
@@ -1298,7 +1194,21 @@ async function init() {
     if (!currentChannel) return;
     try {
       console.log("Retrying channel:", currentChannel.name);
-      if (playerLoading) playerLoading.classList.remove('hidden');
+      let clearKeys = {};
+
+      if (currentChannel.keyId && currentChannel.key) {
+        clearKeys[currentChannel.keyId] = currentChannel.key;
+      } else if (currentChannel.key && currentChannel.key.includes(':')) {
+        const [
+  function onError(event) {
+    console.error("Shaka Error:", event.detail);
+    retryLoad();
+  }
+
+  async function retryLoad() {
+    if (!currentChannel) return;
+    try {
+      console.log("Retrying channel:", currentChannel.name);
       let clearKeys = {};
 
       if (currentChannel.keyId && currentChannel.key) {
@@ -1322,8 +1232,6 @@ async function init() {
       await player.load(currentChannel.src);
       video.muted = false;
       await video.play().catch(err => console.warn("Autoplay blocked:", err));
-      if (playerError) playerError.classList.add('hidden');
-      if (playerLoading) playerLoading.classList.add('hidden');
     } catch (e) {
       console.error("Retry failed:", e);
       setTimeout(retryLoad, 10000);
@@ -1360,10 +1268,6 @@ async function init() {
       noResults.classList.add('hidden');
     }
 
-    // Render a simple grid (no categories)
-    const grid = document.createElement('div');
-    grid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4';
-
     filtered.forEach((ch) => {
       const div = document.createElement('div');
       div.className = 'channel bg-gray-700 rounded-xl p-3 cursor-pointer text-center shadow-md hover:shadow-xl transition';
@@ -1375,14 +1279,12 @@ async function init() {
       div.addEventListener('click', () => {
         document.querySelectorAll('#channelListLive .channel').forEach(c => c.classList.remove('active'));
         div.classList.add('active');
-        zoomLevel = 1.0;
+        zoomLevel = 1.0; // Reset zoom when switching channels
         video.style.transform = 'translate(-50%, -50%)';
         loadChannel(ch);
       });
-      grid.appendChild(div);
+      channelListElement.appendChild(div);
     });
-
-    channelListElement.appendChild(grid);
   }
 
   function populateDownloadMovies() {

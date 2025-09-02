@@ -10,34 +10,12 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="flex flex-col min-h-screen">
-  <!-- Site Header -->
-  <header class="site-header">
-    <div class="site-title">TWEVE LIVE</div>
-  </header>
-
-  <!-- Login Overlay -->
-  <div id="loginOverlay" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[1000] hidden">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-      <h1 class="text-lg font-semibold mb-4 text-center">Ingia</h1>
-      <div class="space-y-3">
-        <input id="loginPhone" type="tel" inputmode="tel" placeholder="Namba ya simu" class="w-full rounded-xl bg-slate-800 border border-slate-600 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" />
-        <input id="loginPassword" type="password" placeholder="Nenosiri" class="w-full rounded-xl bg-slate-800 border border-slate-600 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" />
-        <button id="loginSubmit" class="w-full bg-cyan-500 hover:bg-cyan-600 text-black font-semibold rounded-xl px-4 py-2">Ingia</button>
-        <p id="loginError" class="text-red-400 text-sm text-center hidden">Imeshindikana kuingia. Hakikisha namba/nenosiri.</p>
-      </div>
-    </div>
-  </div>
 
   <!-- Sticky Player Container -->
   <div id="videoContainer" class="bg-black sticky top-0 z-50 p-4">
     <div class="w-full max-w-4xl mx-auto aspect-video rounded-lg shadow-lg overflow-hidden relative">
       <video id="video" class="w-full h-full"></video>
       <button id="pipButton" title="Picture-in-Picture">PiP</button>
-      <div id="nowPlaying" class="hidden absolute left-3 top-3 text-xs font-bold bg-cyan-400/90 text-black px-2 py-1 rounded">PLAYING NOW</div>
-      <div id="playerLoading" class="hidden absolute inset-0 flex items-center justify-center bg-black/60">
-        <div class="loader-spinner"></div>
-      </div>
-      <div id="playerError" class="hidden absolute left-1/2 -translate-x-1/2 bottom-3 bg-red-500 text-black text-xs font-semibold px-3 py-2 rounded shadow">Playback error. Retrying...</div>
     </div>
   </div>
 
@@ -51,21 +29,7 @@
         <span class="text-xs text-slate-400">Bofya chaneli yoyote kuonesha player juu</span>
       </div>
 
-      <!-- SEARCH BAR -->
-      <div class="mb-4">
-        <input
-          id="liveSearch"
-          type="search"
-          placeholder="🔎 Tafuta channel (jina au category)..."
-          class="w-full rounded-xl bg-slate-800 border border-slate-600 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
-          autocomplete="off"
-        />
-      </div>
-
       <div id="channelListLive" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
-
-      <!-- Matokeo yasipopatikana -->
-      <p id="noResults" class="hidden text-sm text-slate-300 mt-4">Hakuna channel iliyopatikana kwa utafutaji huo.</p>
     </section>
 
     <!-- MOVIES PAGE -->
