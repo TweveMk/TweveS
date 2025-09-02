@@ -1367,8 +1367,25 @@ async function init() {
       return acc;
     }, {});
 
+    // Preferred category order inspired by azam.com
+    const preferredCategoryOrder = [
+      'Sports', 'Entertainment', 'Movies', 'News', 'Documentary', 'Lifestyle', 'Kids', 'Music', 'Drama', 'Other'
+    ];
+    const categoryRank = (cat) => {
+      const idx = preferredCategoryOrder.indexOf(cat);
+      return idx === -1 ? preferredCategoryOrder.length : idx;
+    };
+
+    // Featured brand priority within categories
+    const featuredBrands = [
+      'AZAM', 'TNT SPORTS', 'BEIN', 'EUROSPORTS', 'SKY', 'DAZN', 'HBO', 'BBC', 'TRACE', 'CARTOON', 'NICK', 'WARNER', 'SPOTV'
+    ];
+    const isFeatured = (name) => featuredBrands.some(b => (name || '').toUpperCase().includes(b));
+
     // Render groups
-    Object.keys(grouped).sort().forEach(category => {
+    Object.keys(grouped)
+      .sort((a, b) => categoryRank(a) - categoryRank(b) || a.localeCompare(b))
+      .forEach(category => {
       const section = document.createElement('div');
       section.style.marginBottom = '18px';
 
@@ -1383,7 +1400,16 @@ async function init() {
       const list = document.createElement('div');
       list.className = 'channel-list';
 
-      grouped[category].forEach((ch) => {
+      // Sort channels: featured first, then alphabetical
+      grouped[category]
+        .slice()
+        .sort((a, b) => {
+          const fa = isFeatured(a.name) ? 0 : 1;
+          const fb = isFeatured(b.name) ? 0 : 1;
+          if (fa !== fb) return fa - fb;
+          return (a.name || '').localeCompare(b.name || '');
+        })
+        .forEach((ch) => {
         const row = document.createElement('div');
         row.className = 'channel-row';
         row.innerHTML = `
