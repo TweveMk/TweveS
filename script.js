@@ -1360,90 +1360,29 @@ async function init() {
       noResults.classList.add('hidden');
     }
 
-    // Group by category
-    const grouped = filtered.reduce((acc, ch) => {
-      const cat = ch.category || 'Other';
-      (acc[cat] = acc[cat] || []).push(ch);
-      return acc;
-    }, {});
+    // Render a simple grid (no categories)
+    const grid = document.createElement('div');
+    grid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4';
 
-    // Preferred category order inspired by azam.com
-    const preferredCategoryOrder = [
-      'Sports', 'Entertainment', 'Movies', 'News', 'Documentary', 'Lifestyle', 'Kids', 'Music', 'Drama', 'Other'
-    ];
-    const categoryRank = (cat) => {
-      const idx = preferredCategoryOrder.indexOf(cat);
-      return idx === -1 ? preferredCategoryOrder.length : idx;
-    };
-
-    // Featured brand priority within categories
-    const featuredBrands = [
-      'AZAM', 'TNT SPORTS', 'BEIN', 'EUROSPORTS', 'SKY', 'DAZN', 'HBO', 'BBC', 'TRACE', 'CARTOON', 'NICK', 'WARNER', 'SPOTV'
-    ];
-    const isFeatured = (name) => featuredBrands.some(b => (name || '').toUpperCase().includes(b));
-
-    // Render groups
-    Object.keys(grouped)
-      .sort((a, b) => categoryRank(a) - categoryRank(b) || a.localeCompare(b))
-      .forEach(category => {
-      const section = document.createElement('div');
-      section.style.marginBottom = '18px';
-
-      const header = document.createElement('div');
-      header.className = 'flex items-center justify-between mb-2';
-      header.innerHTML = `
-        <h3 class="text-lg font-semibold">${category}</h3>
-        <span class="text-xs text-slate-400">${grouped[category].length} channels</span>
+    filtered.forEach((ch) => {
+      const div = document.createElement('div');
+      div.className = 'channel bg-gray-700 rounded-xl p-3 cursor-pointer text-center shadow-md hover:shadow-xl transition';
+      div.innerHTML = `
+        <img src="${ch.logo}" alt="${ch.name}" class="mb-2 mx-auto border-2 border-white shadow">
+        <p class="text-sm font-semibold truncate">${ch.name}</p>
+        <p class="text-[10px] text-slate-300 mt-1">${ch.category || 'Live'}</p>
       `;
-      section.appendChild(header);
-
-      const list = document.createElement('div');
-      list.className = 'channel-list';
-
-      // Sort channels: featured first, then alphabetical
-      grouped[category]
-        .slice()
-        .sort((a, b) => {
-          const fa = isFeatured(a.name) ? 0 : 1;
-          const fb = isFeatured(b.name) ? 0 : 1;
-          if (fa !== fb) return fa - fb;
-          return (a.name || '').localeCompare(b.name || '');
-        })
-        .forEach((ch) => {
-        const row = document.createElement('div');
-        row.className = 'channel-row';
-        row.innerHTML = `
-          <div class="channel-logo"><img src="${ch.logo}" alt="${ch.name}"></div>
-          <div class="channel-info">
-            <div class="channel-name">${ch.name}</div>
-            <div class="channel-meta"><span class="badge-cat">${ch.category || 'Live'}</span><span>Tap to play</span></div>
-          </div>
-          <div>
-            <button class="play-btn">Play ▶</button>
-          </div>
-        `;
-        const playBtn = row.querySelector('.play-btn');
-        function play() {
-          document.querySelectorAll('#channelListLive .channel-row').forEach(c => c.classList.remove('active'));
-          row.classList.add('active');
-          zoomLevel = 1.0;
-          video.style.transform = 'translate(-50%, -50%)';
-          loadChannel(ch);
-        }
-        row.addEventListener('click', (e) => {
-          if (e.target.closest('.play-btn')) return; // button handles its own
-          play();
-        });
-        playBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          play();
-        });
-        list.appendChild(row);
+      div.addEventListener('click', () => {
+        document.querySelectorAll('#channelListLive .channel').forEach(c => c.classList.remove('active'));
+        div.classList.add('active');
+        zoomLevel = 1.0;
+        video.style.transform = 'translate(-50%, -50%)';
+        loadChannel(ch);
       });
-
-      section.appendChild(list);
-      channelListElement.appendChild(section);
+      grid.appendChild(div);
     });
+
+    channelListElement.appendChild(grid);
   }
 
   function populateDownloadMovies() {
